@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
 
+type ServiceItem = {
+  name: string;
+  subtitle: string;
+  enabled: boolean;
+};
+
+type BudgetItem = {
+  channel: string;
+  amount: number;
+};
+
 type Plan = {
   title: string;
   subtitle: string;
@@ -15,55 +26,100 @@ type Plan = {
   pre: string[];
   during: string[];
   post: string[];
-  services: { name: string; subtitle: string; enabled: boolean }[];
+  services: ServiceItem[];
+  budgetAllocation: BudgetItem[];
 };
 
-const fallbackPlan: Plan = {
-  title: "Welcome, Caner",
-  subtitle: "What do you want to activate today?",
-  packageName: "Full Activation Package",
-  packageDescription:
-    "AI-guided omnichannel recommendation for launch and HCP engagement.",
-  maturity: "Moderate",
-  confidence: "80%",
-  projectedReach: "210K HCPs",
-  projectedEngagement: "18% – 25%",
-  projectedRoi: "3.1x – 4.0x",
-  budgetAdvice: "Balanced plan for strong HCP engagement with core services enabled.",
-  channelMix: [
-    "7-email web cadence",
-    "Fully featured web experience",
-    "Advanced TV / Programmatic",
-    "Evidence search / competitor visibility",
-  ],
-  pre: ["Teaser email", "Disease awareness hub", "Paid media burst"],
-  during: ["HCP launch email", "Web hub", "LinkedIn / programmatic"],
-  post: ["Follow-up email series", "Retargeting", "Content hub expansion"],
-  services: [
-    { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
-    {
-      name: "Paid Media",
-      subtitle: "Media, Programmatic, Advanced TV",
-      enabled: true,
-    },
-    {
-      name: "Search & GEO",
-      subtitle: "Discoverability and evidence visibility",
-      enabled: true,
-    },
-    {
-      name: "Web Experiences",
-      subtitle: "Roche.com, local web, campaign hubs",
-      enabled: true,
-    },
-    { name: "Content Production", subtitle: "The Lab", enabled: true },
-    {
-      name: "Messaging",
-      subtitle: "WhatsApp / mobile messaging",
-      enabled: false,
-    },
-  ],
-};
+const baseServices: ServiceItem[] = [
+  { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
+  { name: "Paid Media", subtitle: "Media, Programmatic, Advanced TV", enabled: true },
+  { name: "Search & GEO", subtitle: "Discoverability and evidence visibility", enabled: true },
+  { name: "Web Experiences", subtitle: "Roche.com, local web, campaign hubs", enabled: true },
+  { name: "Content Production", subtitle: "The Lab", enabled: true },
+  { name: "Messaging", subtitle: "WhatsApp / mobile messaging", enabled: false },
+];
+
+function extractBudget(prompt: string): number {
+  const lower = prompt.toLowerCase();
+
+  const kMatch = lower.match(/(\d+)\s*k/);
+  if (kMatch) return Number(kMatch[1]) * 1000;
+
+  const fullMatch = lower.match(/(\d{3,7})/);
+  if (fullMatch) return Number(fullMatch[1]);
+
+  return 500000;
+}
+
+function buildBudgetAllocation(totalBudget: number, channels: string[]): BudgetItem[] {
+  const lowerChannels = channels.map((c) => c.toLowerCase());
+
+  const hasMedia = lowerChannels.some((c) => c.includes("media") || c.includes("programmatic"));
+  const hasWeb = lowerChannels.some((c) => c.includes("web"));
+  const hasEmail = lowerChannels.some((c) => c.includes("email"));
+  const hasSearch = lowerChannels.some((c) => c.includes("search") || c.includes("geo"));
+
+  const weights = [
+    { channel: "Paid Media", weight: hasMedia ? 0.4 : 0.2 },
+    { channel: "Web", weight: hasWeb ? 0.25 : 0.2 },
+    { channel: "Email", weight: hasEmail ? 0.2 : 0.15 },
+    { channel: "Search", weight: hasSearch ? 0.15 : 0.1 },
+  ];
+
+  const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
+
+  return weights.map((item) => ({
+    channel: item.channel,
+    amount: Math.round((totalBudget * item.weight) / totalWeight),
+  }));
+}
+
+function buildMockPlan(prompt: string): Plan {
+  const budget = extractBudget(prompt);
+  const lower = prompt.toLowerCase();
+
+  const isLaunch = lower.includes("launch");
+  const isGermany = lower.includes("germany");
+  const isHcp = lower.includes("hcp");
+
+  const channelMix = isLaunch
+    ? [
+        "Launch email cadence",
+        "Dedicated web experience",
+        "Programmatic media burst",
+        "Search and GEO visibility",
+      ]
+    : [
+        "Email nurture stream",
+        "Web landing page",
+        "Search discoverability",
+        "Light paid media support",
+      ];
+
+  const budgetAllocation = buildBudgetAllocation(budget, channelMix);
+
+  return {
+    title: "Welcome, Caner",
+    subtitle: "What do you want to activate today?",
+    packageName: isLaunch ? "Full Activation Package" : "Engagement Package",
+    packageDescription: isGermany
+      ? "Recommendation tailored for a Germany-based omnichannel activation."
+      : "Recommendation tailored for a market-specific omnichannel activation.",
+    maturity: budget >= 500000 ? "Advanced" : "Moderate",
+    confidence: isHcp ? "84%" : "76%",
+    projectedReach: budget >= 500000 ? "240K HCPs" : "160K HCPs",
+    projectedEngagement: isHcp ? "19% – 27%" : "12% – 18%",
+    projectedRoi: isLaunch ? "3.2x – 4.3x" : "2.1x – 3.2x",
+    budgetAdvice:
+      "Budget supports a balanced omnichannel activation across email, web, media, and search.",
+    channelMix,
+    pre: ["Audience targeting", "Creative briefing", "Pre-launch teaser email"],
+    during: ["Launch email", "Campaign hub activation", "Paid and search support"],
+    post: ["Follow-up sequence", "Retargeting", "Performance optimization"],
+    services: baseServices,
+    budgetAllocation,
+  };
+}
 
 function safeJsonParse(text: string) {
   try {
@@ -83,57 +139,38 @@ function extractJson(text: string) {
   return safeJsonParse(match[0]);
 }
 
-function normalizePlan(data: Partial<Plan>): Plan {
-  return {
-    ...fallbackPlan,
-    ...data,
-    channelMix: Array.isArray(data.channelMix) ? data.channelMix.slice(0, 6) : fallbackPlan.channelMix,
-    pre: Array.isArray(data.pre) ? data.pre.slice(0, 4) : fallbackPlan.pre,
-    during: Array.isArray(data.during) ? data.during.slice(0, 4) : fallbackPlan.during,
-    post: Array.isArray(data.post) ? data.post.slice(0, 4) : fallbackPlan.post,
-    services: Array.isArray(data.services) && data.services.length
-      ? data.services.map((service) => ({
-          name: service.name || "Service",
-          subtitle: service.subtitle || "",
-          enabled: Boolean(service.enabled),
-        }))
-      : fallbackPlan.services,
-  };
-}
-
-function buildMockPlan(prompt: string): Plan {
-  const lower = prompt.toLowerCase();
-
-  const launch = lower.includes("launch");
-  const germany = lower.includes("germany");
-  const hcp = lower.includes("hcp");
-  const highBudget = lower.includes("500") || lower.includes("500k") || lower.includes("budget");
+function normalizePlan(data: any, prompt: string): Plan {
+  const budget = extractBudget(prompt);
+  const channelMix = Array.isArray(data?.channelMix)
+    ? data.channelMix.slice(0, 6)
+    : buildMockPlan(prompt).channelMix;
 
   return {
-    ...fallbackPlan,
-    packageName: launch ? "Full Activation Package" : "Engagement Package",
-    packageDescription: germany
-      ? "Recommendation tailored for a Germany-based omnichannel activation."
-      : "Recommendation tailored for a market-specific omnichannel activation.",
-    maturity: highBudget ? "Moderate" : "Emerging",
-    confidence: hcp ? "84%" : "76%",
-    projectedReach: highBudget ? "240K HCPs" : "160K HCPs",
-    projectedEngagement: hcp ? "19% – 27%" : "12% – 18%",
-    projectedRoi: launch ? "3.2x – 4.3x" : "2.1x – 3.2x",
-    budgetAdvice: highBudget
-      ? "Budget supports a multi-channel activation with web, search, paid media, and EMMA."
-      : "Consider a lighter phased rollout with web, EMMA, and selected paid support.",
-    channelMix: launch
-      ? [
-          "Launch email cadence",
-          "Dedicated web experience",
-          "Paid media burst",
-          "Search and GEO uplift",
-        ]
-      : ["Email nurture stream", "Web landing page", "Search discoverability"],
-    pre: ["Audience targeting", "Creative briefing", "Pre-launch teaser email"],
-    during: ["Launch email", "Web hub activation", "Paid and search support"],
-    post: ["Follow-up series", "Retargeting", "Optimization review"],
+    title: "Welcome, Caner",
+    subtitle: "What do you want to activate today?",
+    packageName: data?.packageName || "AI Generated Activation Plan",
+    packageDescription: data?.packageDescription || "Generated from your campaign brief.",
+    maturity: data?.maturity || "Advanced",
+    confidence: data?.confidence || "82%",
+    projectedReach: data?.projectedReach || "220K HCPs",
+    projectedEngagement: data?.projectedEngagement || "18% – 25%",
+    projectedRoi: data?.projectedRoi || "3.0x – 4.0x",
+    budgetAdvice:
+      data?.budgetAdvice ||
+      "Budget supports a balanced omnichannel activation across core channels.",
+    channelMix,
+    pre: Array.isArray(data?.pre)
+      ? data.pre.slice(0, 4)
+      : ["Audience targeting", "Creative briefing", "Teaser email"],
+    during: Array.isArray(data?.during)
+      ? data.during.slice(0, 4)
+      : ["Launch email", "Web hub", "Paid support"],
+    post: Array.isArray(data?.post)
+      ? data.post.slice(0, 4)
+      : ["Follow-up sequence", "Retargeting", "Optimization"],
+    services:
+      Array.isArray(data?.services) && data.services.length ? data.services : baseServices,
+    budgetAllocation: buildBudgetAllocation(budget, channelMix),
   };
 }
 
@@ -154,16 +191,14 @@ async function callOpenAI(prompt: string): Promise<Plan> {
     body: JSON.stringify({
       model,
       instructions:
-        "You are a Roche omnichannel strategist. Return only valid JSON. No markdown fences. Keep outputs concise, enterprise-ready, and realistic.",
+        "You are a Roche omnichannel strategist. Return only valid JSON. No markdown. Be concise, realistic, and enterprise-ready.",
       input: `
-Create a JSON object for a Roche tool called RODA based on this campaign brief:
+Generate an omnichannel activation recommendation for this campaign brief:
 
 ${prompt}
 
-Return exactly this shape:
+Return JSON in this shape:
 {
-  "title": "Welcome, Caner",
-  "subtitle": "What do you want to activate today?",
   "packageName": "string",
   "packageDescription": "string",
   "maturity": "string",
@@ -208,7 +243,7 @@ Return exactly this shape:
     return buildMockPlan(prompt);
   }
 
-  return normalizePlan(parsed);
+  return normalizePlan(parsed, prompt);
 }
 
 export async function POST(request: Request) {
@@ -217,10 +252,7 @@ export async function POST(request: Request) {
     const prompt = String(body?.prompt || "").trim();
 
     if (!prompt) {
-      return NextResponse.json(
-        { error: "Prompt is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
     const plan = await callOpenAI(prompt);

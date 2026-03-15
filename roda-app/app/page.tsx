@@ -18,6 +18,7 @@ type Plan = {
   during: string[];
   post: string[];
   services: { name: string; subtitle: string; enabled: boolean }[];
+  budgetAllocation: { channel: string; amount: number }[];
 };
 
 const initialPlan: Plan = {
@@ -31,7 +32,8 @@ const initialPlan: Plan = {
   projectedReach: "210K HCPs",
   projectedEngagement: "18% – 25%",
   projectedRoi: "3.1x – 4.0x",
-  budgetAdvice: "Balanced plan for strong HCP engagement with core services enabled.",
+  budgetAdvice:
+    "Balanced plan for strong HCP engagement with core services enabled.",
   channelMix: [
     "7-email web cadence",
     "Fully featured web experience",
@@ -65,6 +67,12 @@ const initialPlan: Plan = {
       enabled: false,
     },
   ],
+  budgetAllocation: [
+    { channel: "Paid Media", amount: 200000 },
+    { channel: "Web", amount: 125000 },
+    { channel: "Email", amount: 100000 },
+    { channel: "Search", amount: 75000 },
+  ],
 };
 
 function RocheLogo() {
@@ -90,7 +98,13 @@ function RocheLogo() {
   );
 }
 
-function RailIcon({ active = false, children }: { active?: boolean; children: React.ReactNode }) {
+function RailIcon({
+  active = false,
+  children,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div
       className={`flex h-11 w-11 items-center justify-center rounded-xl border transition ${
@@ -138,7 +152,9 @@ export default function Home() {
       setPlan(data);
     } catch (err) {
       console.error(err);
-      setError("Plan could not be generated. Showing the last available recommendation.");
+      setError(
+        "Plan could not be generated. Showing the last available recommendation."
+      );
     } finally {
       setLoading(false);
     }
@@ -300,7 +316,9 @@ export default function Home() {
                             key={label}
                             className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
                           >
-                            <span className="font-semibold text-slate-900">{label}:</span>{" "}
+                            <span className="font-semibold text-slate-900">
+                              {label}:
+                            </span>{" "}
                             {value}
                           </div>
                         ))}
@@ -330,8 +348,10 @@ export default function Home() {
                     {plan.projectedReach.split(" ")[0]}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    {plan.projectedReach.replace(plan.projectedReach.split(" ")[0], "").trim() ||
-                      "Projected audience reach"}
+                    {plan.projectedReach.replace(
+                      plan.projectedReach.split(" ")[0],
+                      ""
+                    ).trim() || "Projected audience reach"}
                   </p>
                 </div>
 
@@ -341,7 +361,11 @@ export default function Home() {
                       <div
                         key={index}
                         className={`w-full rounded-t-2xl ${
-                          index < 3 ? "bg-blue-200" : index === 3 ? "bg-blue-400" : "bg-[#0B5BD3]"
+                          index < 3
+                            ? "bg-blue-200"
+                            : index === 3
+                            ? "bg-blue-400"
+                            : "bg-[#0B5BD3]"
                         }`}
                         style={{ height: `${height}%` }}
                       />
@@ -359,9 +383,41 @@ export default function Home() {
                       key={label}
                       className="rounded-2xl border border-slate-200 bg-[#FAFBFE] px-4 py-3 text-sm text-slate-700"
                     >
-                      <span className="font-semibold text-slate-900">{label}:</span> {value}
+                      <span className="font-semibold text-slate-900">
+                        {label}:
+                      </span>{" "}
+                      {value}
                     </div>
                   ))}
+                </div>
+
+                <div className="mt-5 rounded-3xl border border-slate-200 bg-[#FAFBFE] p-5">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Budget Allocation
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    {plan.budgetAllocation.map((item) => (
+                      <div key={item.channel}>
+                        <div className="mb-1 flex items-center justify-between text-sm text-slate-700">
+                          <span>{item.channel}</span>
+                          <span>{Math.round(item.amount / 1000)}k CHF</span>
+                        </div>
+
+                        <div className="h-3 rounded-full bg-slate-200">
+                          <div
+                            className="h-3 rounded-full bg-[#0B5BD3]"
+                            style={{
+                              width: `${Math.min(
+                                (item.amount / 500000) * 100,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
