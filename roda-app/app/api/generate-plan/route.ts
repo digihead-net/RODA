@@ -32,11 +32,27 @@ type Plan = {
 
 const baseServices: ServiceItem[] = [
   { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
-  { name: "Paid Media", subtitle: "Media, Programmatic, Advanced TV", enabled: true },
-  { name: "Search & GEO", subtitle: "Discoverability and evidence visibility", enabled: true },
-  { name: "Web Experiences", subtitle: "Roche.com, local web, campaign hubs", enabled: true },
+  {
+    name: "Paid Media",
+    subtitle: "Media, Programmatic, LinkedIn, Advanced TV",
+    enabled: true,
+  },
+  {
+    name: "Search & GEO",
+    subtitle: "Discoverability, evidence visibility, search optimization",
+    enabled: true,
+  },
+  {
+    name: "Web Experiences",
+    subtitle: "Roche.com, local web, campaign hubs",
+    enabled: true,
+  },
   { name: "Content Production", subtitle: "The Lab", enabled: true },
-  { name: "Messaging", subtitle: "WhatsApp / mobile messaging", enabled: false },
+  {
+    name: "Messaging",
+    subtitle: "WhatsApp outbound / mobile messaging",
+    enabled: true,
+  },
 ];
 
 function extractBudget(prompt: string): number {
@@ -54,16 +70,22 @@ function extractBudget(prompt: string): number {
 function buildBudgetAllocation(totalBudget: number, channels: string[]): BudgetItem[] {
   const lowerChannels = channels.map((c) => c.toLowerCase());
 
-  const hasMedia = lowerChannels.some((c) => c.includes("media") || c.includes("programmatic"));
+  const hasMedia = lowerChannels.some(
+    (c) =>
+      c.includes("media") ||
+      c.includes("programmatic") ||
+      c.includes("linkedin")
+  );
   const hasWeb = lowerChannels.some((c) => c.includes("web"));
   const hasEmail = lowerChannels.some((c) => c.includes("email"));
   const hasSearch = lowerChannels.some((c) => c.includes("search") || c.includes("geo"));
 
   const weights = [
-    { channel: "Paid Media", weight: hasMedia ? 0.4 : 0.2 },
-    { channel: "Web", weight: hasWeb ? 0.25 : 0.2 },
+    { channel: "Paid Media", weight: hasMedia ? 0.38 : 0.2 },
+    { channel: "Web", weight: hasWeb ? 0.24 : 0.2 },
     { channel: "Email", weight: hasEmail ? 0.2 : 0.15 },
-    { channel: "Search", weight: hasSearch ? 0.15 : 0.1 },
+    { channel: "Search", weight: hasSearch ? 0.1 : 0.1 },
+    { channel: "Messaging", weight: 0.08 },
   ];
 
   const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
@@ -84,15 +106,18 @@ function buildMockPlan(prompt: string): Plan {
 
   const channelMix = isLaunch
     ? [
-        "Launch email cadence",
-        "Dedicated web experience",
-        "Programmatic media burst",
-        "Search and GEO visibility",
+        "7-email launch cadence",
+        "Dedicated campaign web hub",
+        "Programmatic and LinkedIn media burst",
+        "Search & GEO visibility uplift",
+        "WhatsApp outbound reminders",
+        "Follow-up content expansion",
       ]
     : [
-        "Email nurture stream",
+        "4-email nurture stream",
         "Web landing page",
         "Search discoverability",
+        "WhatsApp outbound reminder",
         "Light paid media support",
       ];
 
@@ -100,22 +125,37 @@ function buildMockPlan(prompt: string): Plan {
 
   return {
     title: "Welcome, Caner",
-    subtitle: "What do you want to activate today?",
-    packageName: isLaunch ? "Full Activation Package" : "Engagement Package",
+    subtitle: "What do you want to execute today?",
+    packageName: isLaunch ? "Full Execution Package" : "Execution Package",
     packageDescription: isGermany
-      ? "Recommendation tailored for a Germany-based omnichannel activation."
-      : "Recommendation tailored for a market-specific omnichannel activation.",
+      ? "Recommendation tailored for a Germany-based omnichannel execution scenario."
+      : "Recommendation tailored for a market-specific omnichannel execution scenario.",
     maturity: budget >= 500000 ? "Advanced" : "Moderate",
     confidence: isHcp ? "84%" : "76%",
     projectedReach: budget >= 500000 ? "240K HCPs" : "160K HCPs",
     projectedEngagement: isHcp ? "19% – 27%" : "12% – 18%",
     projectedRoi: isLaunch ? "3.2x – 4.3x" : "2.1x – 3.2x",
     budgetAdvice:
-      "Budget supports a balanced omnichannel activation across email, web, media, and search.",
+      "AI Advice: This execution plan is optimized for launch visibility and continuity. A heavier paid media pulse supports the launch peak, while EMMA, web, search, and WhatsApp outbound maintain engagement across the full execution window.",
     channelMix,
-    pre: ["Audience targeting", "Creative briefing", "Pre-launch teaser email"],
-    during: ["Launch email", "Campaign hub activation", "Paid and search support"],
-    post: ["Follow-up sequence", "Retargeting", "Performance optimization"],
+    pre: [
+      "2 teaser emails to priority HCP audiences",
+      "WhatsApp outbound save-the-date message",
+      "Disease awareness web landing page",
+      "Paid media teaser burst",
+    ],
+    during: [
+      "3 launch emails across priority segments",
+      "Campaign hub go-live with modular content",
+      "Programmatic + LinkedIn amplification",
+      "Search and GEO visibility push",
+    ],
+    post: [
+      "2 follow-up emails with next-best-content",
+      "WhatsApp outbound reminder and re-entry touchpoint",
+      "Retargeting burst for engaged audiences",
+      "Content hub expansion and optimization review",
+    ],
     services: baseServices,
     budgetAllocation,
   };
@@ -142,14 +182,15 @@ function extractJson(text: string) {
 function normalizePlan(data: any, prompt: string): Plan {
   const budget = extractBudget(prompt);
   const channelMix = Array.isArray(data?.channelMix)
-    ? data.channelMix.slice(0, 6)
+    ? data.channelMix.slice(0, 8)
     : buildMockPlan(prompt).channelMix;
 
   return {
     title: "Welcome, Caner",
-    subtitle: "What do you want to activate today?",
-    packageName: data?.packageName || "AI Generated Activation Plan",
-    packageDescription: data?.packageDescription || "Generated from your campaign brief.",
+    subtitle: "What do you want to execute today?",
+    packageName: data?.packageName || "AI Generated Execution Package",
+    packageDescription:
+      data?.packageDescription || "Generated from your campaign brief.",
     maturity: data?.maturity || "Advanced",
     confidence: data?.confidence || "82%",
     projectedReach: data?.projectedReach || "220K HCPs",
@@ -157,19 +198,33 @@ function normalizePlan(data: any, prompt: string): Plan {
     projectedRoi: data?.projectedRoi || "3.0x – 4.0x",
     budgetAdvice:
       data?.budgetAdvice ||
-      "Budget supports a balanced omnichannel activation across core channels.",
+      "AI Advice: This execution plan balances launch impact with sustained follow-through across the priority channels.",
     channelMix,
     pre: Array.isArray(data?.pre)
-      ? data.pre.slice(0, 4)
-      : ["Audience targeting", "Creative briefing", "Teaser email"],
+      ? data.pre.slice(0, 5)
+      : [
+          "2 teaser emails to priority HCP audiences",
+          "WhatsApp outbound save-the-date message",
+          "Disease awareness web landing page",
+        ],
     during: Array.isArray(data?.during)
-      ? data.during.slice(0, 4)
-      : ["Launch email", "Web hub", "Paid support"],
+      ? data.during.slice(0, 5)
+      : [
+          "3 launch emails across priority segments",
+          "Campaign hub go-live with modular content",
+          "Programmatic + LinkedIn amplification",
+        ],
     post: Array.isArray(data?.post)
-      ? data.post.slice(0, 4)
-      : ["Follow-up sequence", "Retargeting", "Optimization"],
+      ? data.post.slice(0, 5)
+      : [
+          "2 follow-up emails with next-best-content",
+          "WhatsApp outbound reminder and re-entry touchpoint",
+          "Retargeting burst for engaged audiences",
+        ],
     services:
-      Array.isArray(data?.services) && data.services.length ? data.services : baseServices,
+      Array.isArray(data?.services) && data.services.length
+        ? data.services
+        : baseServices,
     budgetAllocation: buildBudgetAllocation(budget, channelMix),
   };
 }
@@ -193,7 +248,7 @@ async function callOpenAI(prompt: string): Promise<Plan> {
       instructions:
         "You are a Roche omnichannel strategist. Return only valid JSON. No markdown. Be concise, realistic, and enterprise-ready.",
       input: `
-Generate an omnichannel activation recommendation for this campaign brief:
+Generate an omnichannel execution recommendation for this campaign brief:
 
 ${prompt}
 
@@ -207,17 +262,17 @@ Return JSON in this shape:
   "projectedEngagement": "string",
   "projectedRoi": "string",
   "budgetAdvice": "string",
-  "channelMix": ["string", "string", "string", "string"],
+  "channelMix": ["string", "string", "string", "string", "string"],
   "pre": ["string", "string", "string"],
   "during": ["string", "string", "string"],
   "post": ["string", "string", "string"],
   "services": [
     { "name": "Marketing Automation", "subtitle": "EMMA", "enabled": true },
-    { "name": "Paid Media", "subtitle": "Media, Programmatic, Advanced TV", "enabled": true },
-    { "name": "Search & GEO", "subtitle": "Discoverability and evidence visibility", "enabled": true },
+    { "name": "Paid Media", "subtitle": "Media, Programmatic, LinkedIn, Advanced TV", "enabled": true },
+    { "name": "Search & GEO", "subtitle": "Discoverability, evidence visibility, search optimization", "enabled": true },
     { "name": "Web Experiences", "subtitle": "Roche.com, local web, campaign hubs", "enabled": true },
     { "name": "Content Production", "subtitle": "The Lab", "enabled": true },
-    { "name": "Messaging", "subtitle": "WhatsApp / mobile messaging", "enabled": false }
+    { "name": "Messaging", "subtitle": "WhatsApp outbound / mobile messaging", "enabled": true }
   ]
 }
       `,

@@ -23,36 +23,53 @@ type Plan = {
 
 const initialPlan: Plan = {
   title: "Welcome, Caner",
-  subtitle: "What do you want to activate today?",
-  packageName: "Full Activation Package",
+  subtitle: "What do you want to execute today?",
+  packageName: "Full Execution Package",
   packageDescription:
-    "AI-guided omnichannel recommendation for launch and HCP engagement.",
-  maturity: "Moderate",
-  confidence: "80%",
-  projectedReach: "210K HCPs",
-  projectedEngagement: "18% – 25%",
-  projectedRoi: "3.1x – 4.0x",
+    "Cross-channel execution blueprint designed for launch readiness, HCP engagement, and orchestrated follow-through.",
+  maturity: "Advanced",
+  confidence: "84%",
+  projectedReach: "240K HCPs",
+  projectedEngagement: "19% – 27%",
+  projectedRoi: "3.2x – 4.3x",
   budgetAdvice:
-    "Balanced plan for strong HCP engagement with core services enabled.",
+    "AI Advice: This plan is calibrated for strong launch visibility and sustained HCP engagement. Budget distribution supports a heavier paid media burst during launch, while EMMA, web, search, and WhatsApp outbound maintain continuity before and after the peak activation window.",
   channelMix: [
-    "7-email web cadence",
-    "Fully featured web experience",
-    "Advanced TV / Programmatic",
-    "Evidence search / competitor visibility",
+    "7-email launch cadence",
+    "Dedicated campaign web hub",
+    "Programmatic and LinkedIn media burst",
+    "Search & GEO visibility uplift",
+    "WhatsApp outbound reminders",
+    "Follow-up content expansion",
   ],
-  pre: ["Teaser email", "Disease awareness hub", "Paid media burst"],
-  during: ["HCP launch email", "Web hub", "LinkedIn / programmatic"],
-  post: ["Follow-up email series", "Retargeting", "Content hub expansion"],
+  pre: [
+    "2 teaser emails to priority HCP audiences",
+    "WhatsApp outbound save-the-date message",
+    "Disease awareness web landing page",
+    "Paid media teaser burst",
+  ],
+  during: [
+    "3 launch emails across priority segments",
+    "Campaign hub go-live with modular content",
+    "Programmatic + LinkedIn amplification",
+    "Search and GEO visibility push",
+  ],
+  post: [
+    "2 follow-up emails with next-best-content",
+    "WhatsApp outbound reminder and re-entry touchpoint",
+    "Retargeting burst for engaged audiences",
+    "Content hub expansion and optimization review",
+  ],
   services: [
     { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
     {
       name: "Paid Media",
-      subtitle: "Media, Programmatic, Advanced TV",
+      subtitle: "Media, Programmatic, LinkedIn, Advanced TV",
       enabled: true,
     },
     {
       name: "Search & GEO",
-      subtitle: "Discoverability and evidence visibility",
+      subtitle: "Discoverability, evidence visibility, search optimization",
       enabled: true,
     },
     {
@@ -63,15 +80,15 @@ const initialPlan: Plan = {
     { name: "Content Production", subtitle: "The Lab", enabled: true },
     {
       name: "Messaging",
-      subtitle: "WhatsApp / mobile messaging",
-      enabled: false,
+      subtitle: "WhatsApp outbound / mobile messaging",
+      enabled: true,
     },
   ],
   budgetAllocation: [
     { channel: "Paid Media", amount: 200000 },
-    { channel: "Web", amount: 125000 },
+    { channel: "Web", amount: 120000 },
     { channel: "Email", amount: 100000 },
-    { channel: "Search", amount: 75000 },
+    { channel: "Search", amount: 80000 },
   ],
 };
 
@@ -169,10 +186,10 @@ export default function Home() {
             <div className="hidden h-7 w-px bg-slate-200 md:block" />
             <div>
               <p className="text-sm font-semibold text-[#0B5BD3]">
-                RODA (Roche Omnichannel Decision and Activation)
+                RODE (Roche Omnichannel Decision and Execution)
               </p>
               <p className="text-xs text-slate-500">
-                Intelligent omnichannel campaign planning
+                Intelligent omnichannel execution planning
               </p>
             </div>
           </div>
@@ -234,23 +251,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              {[
-                "Assemble an asset",
-                "Brief the Lab/Agency",
-                "Create a visual brief",
-                "Draft a PLS",
-                "Find content",
-              ].map((item) => (
-                <button
-                  key={item}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[#0B5BD3]"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-
             {error ? (
               <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -261,7 +261,7 @@ export default function Home() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between gap-4">
                   <h3 className="text-2xl font-semibold text-slate-900">
-                    AI Strategy Recommendation
+                    Strategy Recommendation
                   </h3>
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#0B5BD3]">
                     AI Recommended
@@ -326,14 +326,13 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
-                      {plan.budgetAdvice}
-                    </div>
-
-                    <button className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                  <div className="mt-6 rounded-3xl border border-slate-200 bg-white px-5 py-4">
+                    <p className="text-sm font-semibold text-slate-900">
                       AI Advice
-                    </button>
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {plan.budgetAdvice}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -446,7 +445,7 @@ export default function Home() {
                       {phase.title}
                     </h4>
                     <p className="mt-2 text-sm text-slate-500">
-                      Recommended activation flow for this phase.
+                      Recommended execution flow for this phase.
                     </p>
 
                     <div className="mt-5 space-y-3">
@@ -505,12 +504,18 @@ export default function Home() {
 
                     <p className="mt-5 text-sm text-slate-600">
                       {service.enabled
-                        ? "Recommended for this activation scenario."
+                        ? "Recommended for this execution scenario."
                         : "Optional for this campaign based on business need."}
                     </p>
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-8 flex justify-center">
+              <button className="rounded-full bg-[#0B5BD3] px-8 py-4 text-base font-semibold text-white transition hover:bg-[#0948a8]">
+                Execute This Plan
+              </button>
             </div>
           </div>
         </section>
