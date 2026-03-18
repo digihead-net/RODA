@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Plan = {
   title: string;
@@ -21,16 +21,21 @@ type Plan = {
   budgetAllocation: { channel: string; amount: number }[];
 };
 
-type CopilotMessage = {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
+type TrackerItem = {
+  request: string;
+  owner: string;
+  status: "Submitted" | "In Review" | "In Production" | "Ready";
+  dueDate: string;
+  lastUpdate: string;
 };
+
+type ScenarioKey = "recommended" | "balanced" | "efficiency";
+type TabKey = "planner" | "execution" | "performance";
 
 const DEMO_PASSWORD = "rode2026";
 
-const initialPlan: Plan = {
-  title: "Welcome, Caner",
+const recommendedPlan: Plan = {
+  title: "Welcome, Rachel",
   subtitle: "What do you want to achieve today?",
   packageName: "Full Execution Package",
   packageDescription:
@@ -101,97 +106,233 @@ const initialPlan: Plan = {
   ],
 };
 
-function getCopilotReply(userPrompt: string, plan: Plan) {
-  const text = userPrompt.toLowerCase();
+const balancedPlan: Plan = {
+  title: "Welcome, Rachel",
+  subtitle: "What do you want to achieve today?",
+  packageName: "Balanced Engagement Package",
+  packageDescription:
+    "Orchestrated HCP engagement with moderated budget distribution, reduced delivery risk, and stronger channel balance across the full journey.",
+  maturity: "Intermediate",
+  confidence: "86%",
+  projectedReach: "185K HCPs",
+  projectedEngagement: "18% – 25%",
+  projectedRoi: "3.4x – 4.5x",
+  budgetAdvice:
+    "This option reduces intensity in paid media and redistributes more investment into EMMA and Search to improve efficiency while preserving broad engagement.",
+  channelMix: [
+    "8-email engagement cadence",
+    "Dedicated campaign web hub",
+    "More targeted paid media burst",
+    "Search & GEO visibility uplift",
+    "WhatsApp outbound reminders",
+    "Long-tail nurture optimization",
+  ],
+  pre: [
+    "2 teaser emails to priority HCP audiences",
+    "Pre-launch nurture email",
+    "Disease awareness web landing page",
+    "Targeted paid media teaser burst",
+  ],
+  during: [
+    "3 launch emails across priority segments",
+    "Campaign hub go-live with modular content",
+    "Reduced but targeted media amplification",
+    "Search and GEO visibility push",
+  ],
+  post: [
+    "3 follow-up emails with next-best-content",
+    "Search-based re-entry path",
+    "Retargeting burst for engaged audiences",
+    "Content optimization review",
+  ],
+  services: [
+    { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
+    {
+      name: "Paid Media",
+      subtitle: "Media, Programmatic, LinkedIn, Advanced TV",
+      enabled: true,
+    },
+    {
+      name: "Search & GEO",
+      subtitle: "Discoverability, evidence visibility, search optimization",
+      enabled: true,
+    },
+    {
+      name: "Web Experiences",
+      subtitle: "Roche.com, local web, campaign hubs",
+      enabled: true,
+    },
+    { name: "Content Production", subtitle: "The Lab", enabled: true },
+    {
+      name: "Messaging",
+      subtitle: "WhatsApp outbound / mobile messaging",
+      enabled: true,
+    },
+  ],
+  budgetAllocation: [
+    { channel: "Paid Media", amount: 160000 },
+    { channel: "Web", amount: 120000 },
+    { channel: "Email", amount: 120000 },
+    { channel: "Search", amount: 60000 },
+    { channel: "Messaging", amount: 40000 },
+  ],
+};
 
-  if (text.includes("risk") || text.includes("riskler") || text.includes("risks")) {
-    return `I see four main execution risks in the current plan:
+const efficiencyPlan: Plan = {
+  title: "Welcome, Rachel",
+  subtitle: "What do you want to achieve today?",
+  packageName: "Efficiency Package",
+  packageDescription:
+    "Lean execution model with tighter channel mix, lower investment intensity, and stronger emphasis on cost-efficient engagement and continuity.",
+  maturity: "Intermediate",
+  confidence: "88%",
+  projectedReach: "160K HCPs",
+  projectedEngagement: "17% – 24%",
+  projectedRoi: "3.8x – 4.8x",
+  budgetAdvice:
+    "This option is optimized for efficiency. Paid Media is reduced further, while Email, Search, and Web carry more of the engagement load with a lighter but smarter activation pattern.",
+  channelMix: [
+    "8-email efficiency cadence",
+    "Lean campaign web hub",
+    "Highly targeted paid media support",
+    "Search-led discoverability layer",
+    "WhatsApp reminder touchpoint",
+    "Extended long-tail nurture",
+  ],
+  pre: [
+    "2 teaser emails to priority HCP audiences",
+    "Lean awareness landing page",
+    "Targeted media burst for core audiences",
+    "Search readiness setup",
+  ],
+  during: [
+    "2 launch emails across top-priority segments",
+    "Lean campaign hub go-live",
+    "Targeted paid media amplification",
+    "Search-led visibility push",
+  ],
+  post: [
+    "3 follow-up emails with next-best-content",
+    "Retargeting for engaged audiences only",
+    "Search-based re-entry and content path",
+    "Nurture stream optimization review",
+  ],
+  services: [
+    { name: "Marketing Automation", subtitle: "EMMA", enabled: true },
+    {
+      name: "Paid Media",
+      subtitle: "Media, Programmatic, LinkedIn, Advanced TV",
+      enabled: true,
+    },
+    {
+      name: "Search & GEO",
+      subtitle: "Discoverability, evidence visibility, search optimization",
+      enabled: true,
+    },
+    {
+      name: "Web Experiences",
+      subtitle: "Roche.com, local web, campaign hubs",
+      enabled: true,
+    },
+    { name: "Content Production", subtitle: "The Lab", enabled: true },
+    {
+      name: "Messaging",
+      subtitle: "WhatsApp outbound / mobile messaging",
+      enabled: true,
+    },
+  ],
+  budgetAllocation: [
+    { channel: "Paid Media", amount: 140000 },
+    { channel: "Web", amount: 120000 },
+    { channel: "Email", amount: 130000 },
+    { channel: "Search", amount: 70000 },
+    { channel: "Messaging", amount: 40000 },
+  ],
+};
 
-1. Messaging readiness may delay launch if consent or operational flows are not confirmed.
-2. Web content production timing looks tight around the launch window.
-3. Rep and digital touchpoints are not yet explicitly sequenced in one shared timeline.
-4. KPI ownership for optimization is still broad and should be assigned more clearly.
+const quickAccessServices = [
+  {
+    name: "The Lab Content Services",
+    href: "#",
+    description:
+      "Content production and content support services delivered through The Lab.",
+  },
+  {
+    name: "Marketing Automation",
+    href: "#",
+    description: "Email, mobile messaging and marketing automation.",
+  },
+  {
+    name: "Search Experience",
+    href: "#",
+    description: "SEO, GEO.",
+  },
+  {
+    name: "Media",
+    href: "#",
+    description: "Paid media and media activation services.",
+  },
+  {
+    name: "Website Services",
+    href: "#",
+    description: "Website and related digital experience services.",
+  },
+];
 
-Recommendation:
-Lock governance routing first, then confirm the minimum viable channel mix for launch.`;
-  }
+const trackerItems: TrackerItem[] = [
+  {
+    request: "Product X launch email wave",
+    owner: "EMMA Service Team",
+    status: "Ready",
+    dueDate: "Mar 12, 2026",
+    lastUpdate: "Assets approved and ready for deployment.",
+  },
+  {
+    request: "Campaign hub page build",
+    owner: "Web Experience Team",
+    status: "In Production",
+    dueDate: "Mar 18, 2026",
+    lastUpdate: "Page template configured and content modules in progress.",
+  },
+  {
+    request: "Programmatic media setup",
+    owner: "Media Team",
+    status: "In Review",
+    dueDate: "Mar 15, 2026",
+    lastUpdate: "Audience and placement strategy under review.",
+  },
+  {
+    request: "Search & GEO optimization request",
+    owner: "Search Experience Team",
+    status: "Submitted",
+    dueDate: "Mar 20, 2026",
+    lastUpdate: "Intake submitted and awaiting prioritization.",
+  },
+  {
+    request: "WhatsApp outbound reminder flow",
+    owner: "Messaging Team",
+    status: "In Production",
+    dueDate: "Mar 16, 2026",
+    lastUpdate: "Flow logic finalized; localization underway.",
+  },
+  {
+    request: "Launch content adaptation pack",
+    owner: "The Lab Content Services",
+    status: "In Review",
+    dueDate: "Mar 14, 2026",
+    lastUpdate: "Draft assets shared for review and comments.",
+  },
+];
 
-  if (
-    text.includes("budget") ||
-    text.includes("bütçe") ||
-    text.includes("reallocate") ||
-    text.includes("allocation")
-  ) {
-    return `Based on the current mix, I would keep Paid Media as the strongest launch pulse but slightly rebalance for continuity.
-
-Suggested refinement:
-• Paid Media: keep strong for launch burst
-• Web: maintain as the campaign destination
-• Email / EMMA: protect this investment for sequenced engagement
-• Search & GEO: maintain visibility support
-• Messaging: use selectively for high-value reminders
-
-Overall view:
-This plan is already launch-oriented. I would optimize around orchestration clarity rather than making a drastic budget shift.`;
-  }
-
-  if (
-    text.includes("scenario") ||
-    text.includes("compare") ||
-    text.includes("karşılaştır") ||
-    text.includes("comparison")
-  ) {
-    return `Here is the simplest way to frame the scenarios:
-
-Full Execution Package
-• Higher reach
-• Stronger launch visibility
-• Better omnichannel orchestration
-• Higher execution dependency
-
-Balanced Engagement Package
-• Lower cost pressure
-• Easier to operationalize
-• Stronger focus on core channels
-• Lower upside versus the full package
-
-My recommendation:
-Use Full Execution Package for strategic launches, and Balanced Engagement for markets needing speed and simplicity.`;
-  }
-
-  if (
-    text.includes("apply") ||
-    text.includes("next step") ||
-    text.includes("what should i do") ||
-    text.includes("ne yapmalıyım")
-  ) {
-    return `My recommended next steps for this plan:
-
-1. Confirm market objective and launch window
-2. Validate the core channel mix with affiliate stakeholders
-3. Align execution owners across EMMA, media, search, web, and messaging
-4. Create a simple pre / during / post operating timeline
-5. Launch with the current package and optimize after the first engagement signal
-
-This is the right type of plan for strong HCP engagement with execution continuity.`;
-  }
-
-  return `Here is my recommendation based on the current plan:
-
-Package:
-${plan.packageName}
-
-Why it fits:
-• It supports launch visibility and follow-through
-• It uses a broad but realistic omnichannel mix
-• It balances activation and continuity across the full execution window
-
-If you want, I can also help with:
-• risk review
-• scenario comparison
-• budget refinement
-• next-step recommendations`;
-}
+const budgetColors = [
+  "#3E7BF0",
+  "#79B4F4",
+  "#4D95ED",
+  "#F2D76B",
+  "#F0B763",
+  "#9B8AFB",
+  "#72D6C9",
+];
 
 function RocheLogo() {
   return (
@@ -244,7 +385,7 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
 
         <h1 className="text-3xl font-semibold text-[#1D263B]">Protected Demo</h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Enter password to access the RODE demo.
+          Enter password to access the operating system demo.
         </p>
 
         <input
@@ -275,124 +416,23 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-function ExecuteModal({
-  open,
-  onClose,
-  plan,
+function SideNav({
+  activeTab,
+  onTabChange,
 }: {
-  open: boolean;
-  onClose: () => void;
-  plan: Plan;
+  activeTab: TabKey;
+  onTabChange: (tab: TabKey) => void;
 }) {
-  if (!open) return null;
+  const navItems: {
+    key: TabKey;
+    label: string;
+    icon: string;
+  }[] = [
+    { key: "planner", label: "Campaign Planner", icon: "✓" },
+    { key: "execution", label: "Execution Manager", icon: "▤" },
+    { key: "performance", label: "Performance Intelligence", icon: "⤴" },
+  ];
 
-  const enabledServices = plan.services.filter((s) => s.enabled);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4">
-      <div className="w-full max-w-4xl rounded-[30px] border border-[#DFE6F2] bg-white p-6 shadow-[0_30px_80px_rgba(30,60,120,0.18)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-[#2463E8]">
-              Execution Briefing Preview
-            </p>
-            <h3 className="mt-1 text-3xl font-semibold text-[#1D263B]">
-              Execute This Plan
-            </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              This simulates a briefing package being routed to the relevant
-              execution teams across omnichannel services.
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-full border border-[#DCE4F2] px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-          >
-            Close
-          </button>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[26px] border border-[#E2E8F3] bg-[#FAFCFF] p-5">
-            <h4 className="text-lg font-semibold text-[#1D263B]">Brief Summary</h4>
-
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                <span className="font-semibold text-[#1D263B]">Package:</span>{" "}
-                {plan.packageName}
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                <span className="font-semibold text-[#1D263B]">Objective:</span>{" "}
-                Cross-functional omnichannel execution with HCP engagement focus.
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                <span className="font-semibold text-[#1D263B]">Projected Reach:</span>{" "}
-                {plan.projectedReach}
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 leading-6">
-                <span className="font-semibold text-[#1D263B]">AI Advice:</span>{" "}
-                {plan.budgetAdvice}
-              </div>
-            </div>
-
-            <h4 className="mt-6 text-lg font-semibold text-[#1D263B]">
-              Included in briefing
-            </h4>
-
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                Channel mix and execution sequence
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                Budget allocation by channel
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                Pre / During / Post orchestration timeline
-              </div>
-              <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
-                Service handoff summary for execution teams
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[26px] border border-[#E2E8F3] bg-white p-5">
-            <h4 className="text-lg font-semibold text-[#1D263B]">
-              Target Departments
-            </h4>
-
-            <div className="mt-4 space-y-3">
-              {enabledServices.map((service) => (
-                <div
-                  key={service.name}
-                  className="rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3"
-                >
-                  <p className="text-sm font-semibold text-[#1D263B]">
-                    {service.name}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">{service.subtitle}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              Demo behavior: the button below simulates dispatch to execution teams.
-            </div>
-
-            <button
-              onClick={onClose}
-              className="mt-6 w-full rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(36,99,232,0.25)]"
-            >
-              Send Briefing to Execution Teams
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SideNav() {
   return (
     <aside className="w-[246px] shrink-0 border-r border-[#E3E8F2] bg-[#F8FAFE]">
       <div className="flex items-center justify-between border-b border-[#E3E8F2] px-6 py-5">
@@ -403,12 +443,11 @@ function SideNav() {
       <div className="px-4 py-5">
         <div className="rounded-[18px] bg-gradient-to-br from-[#2E72EF] to-[#2463E8] p-5 text-white shadow-[0_20px_40px_rgba(36,99,232,0.22)]">
           <div className="flex items-start gap-3">
-            <div className="mt-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[11px] font-semibold">
-              RODE
-            </div>
             <div>
-              <p className="text-[16px] font-semibold">Roche Omnichannel</p>
+              <p className="text-[18px] font-semibold">RODE</p>
               <p className="mt-1 text-[13px] leading-5 text-white/90">
+                Roche Omnichannel
+                <br />
                 Decision &amp; Execution
               </p>
             </div>
@@ -416,33 +455,32 @@ function SideNav() {
         </div>
 
         <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-3 rounded-2xl bg-[#EAF1FF] px-4 py-3 text-[#1E4FB7]">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2F73F0] text-sm text-white">
-              ✓
-            </div>
-            <span className="font-medium">Campaign Planner</span>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3 text-slate-600">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs">
-              ▤
-            </div>
-            <span className="font-medium">Execution Manager</span>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3 text-slate-600">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs">
-              ⤴
-            </div>
-            <span className="font-medium">Performance Intelligence</span>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3 text-slate-600">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs">
-              ✦
-            </div>
-            <span className="font-medium">Ask RODE</span>
-          </div>
+          {navItems.map((item) => {
+            const isActive = activeTab === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onTabChange(item.key)}
+                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                  isActive
+                    ? "bg-[#EAF1FF] text-[#1E4FB7]"
+                    : "text-slate-600 hover:bg-white/70"
+                }`}
+              >
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${
+                    isActive
+                      ? "bg-[#2F73F0] text-white"
+                      : "bg-slate-200 text-slate-500"
+                  }`}
+                >
+                  {item.icon}
+                </div>
+                <span className="font-medium">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-8">
@@ -479,52 +517,72 @@ function SideNav() {
   );
 }
 
+function formatCurrencyCompact(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(amount);
+}
+
 function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }) {
   const total = items.reduce((sum, item) => sum + item.amount, 0);
-  const pct = (amount: number) => Math.round((amount / total) * 100);
 
-  const [a, b, c, d, e] = items;
-  const aPct = pct(a?.amount || 0);
-  const bPct = pct(b?.amount || 0);
-  const cPct = pct(c?.amount || 0);
-  const dPct = pct(d?.amount || 0);
-  const ePct = pct(e?.amount || 0);
+  const gradientStops = useMemo(() => {
+    if (!items.length || total === 0) {
+      return "conic-gradient(#E5ECF7 0% 100%)";
+    }
+
+    let cursor = 0;
+
+    const stops = items
+      .map((item, index) => {
+        const color = budgetColors[index % budgetColors.length];
+        const start = cursor;
+        const end = cursor + (item.amount / total) * 100;
+        cursor = end;
+        return `${color} ${start}% ${end}%`;
+      })
+      .join(",");
+
+    return `conic-gradient(${stops})`;
+  }, [items, total]);
 
   return (
     <div className="flex items-center gap-8">
-      <div className="relative h-[190px] w-[190px] shrink-0 rounded-full bg-[conic-gradient(#3E7BF0_0%_38%,#79B4F4_38%_62%,#4D95ED_62%_82%,#F2D76B_82%_92%,#F0B763_92%_100%)]">
+      <div
+        className="relative flex h-[190px] w-[190px] shrink-0 items-center justify-center rounded-full"
+        style={{ background: gradientStops }}
+      >
         <div className="absolute inset-[34px] rounded-full bg-white shadow-inner" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-[13px] text-slate-500">Budget</div>
-            <div className="text-[20px] font-semibold text-[#1D263B]">
-              {Math.round(total / 1000)}k
-            </div>
-          </div>
+        <div className="relative z-10 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Budget
+          </p>
+          <p className="mt-1 text-[26px] font-semibold text-[#1D263B]">
+            {formatCurrencyCompact(total)}
+          </p>
+          <p className="text-xs text-slate-500">CHF</p>
         </div>
       </div>
 
-      <div className="space-y-2 text-[17px] text-slate-700">
-        <div className="flex items-center justify-between gap-8">
-          <span>Paid Media</span>
-          <span className="font-medium">{aPct}%</span>
-        </div>
-        <div className="flex items-center justify-between gap-8">
-          <span>Web</span>
-          <span className="font-medium">{bPct}%</span>
-        </div>
-        <div className="flex items-center justify-between gap-8">
-          <span>Email</span>
-          <span className="font-medium">{cPct}%</span>
-        </div>
-        <div className="flex items-center justify-between gap-8">
-          <span>Search</span>
-          <span className="font-medium">{dPct}%</span>
-        </div>
-        <div className="flex items-center justify-between gap-8">
-          <span>Messaging</span>
-          <span className="font-medium">{ePct}%</span>
-        </div>
+      <div className="min-w-[220px] space-y-3 text-[15px] text-slate-700">
+        {items.map((item, index) => {
+          const share = total > 0 ? Math.round((item.amount / total) * 100) : 0;
+          const color = budgetColors[index % budgetColors.length];
+
+          return (
+            <div key={item.channel} className="flex items-center justify-between gap-8">
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                <span>{item.channel}</span>
+              </div>
+              <span className="font-medium">{share}%</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -535,15 +593,19 @@ function ScenarioCard({
   selected = false,
   subtitle,
   reach,
+  onClick,
 }: {
   title: string;
   selected?: boolean;
   subtitle: string;
   reach: string;
+  onClick?: () => void;
 }) {
   return (
-    <div
-      className={`rounded-[24px] border p-5 transition-all duration-200 ${
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-[24px] border p-5 text-left transition-all duration-200 ${
         selected
           ? "border-[#2E72EF] bg-gradient-to-br from-[#2F73F0] to-[#2463E8] text-white shadow-[0_20px_40px_rgba(36,99,232,0.28)]"
           : "border-[#E2E8F3] bg-white text-slate-800 hover:shadow-md"
@@ -556,9 +618,7 @@ function ScenarioCard({
 
         <div
           className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
-            selected
-              ? "bg-white/20 text-white"
-              : "bg-slate-100 text-slate-400"
+            selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"
           }`}
         >
           {selected ? "✓" : "○"}
@@ -580,11 +640,82 @@ function ScenarioCard({
       >
         {reach}
       </div>
+    </button>
+  );
+}
+
+function ScenarioComparisonPanel({
+  activeScenario,
+  onSelect,
+}: {
+  activeScenario: ScenarioKey;
+  onSelect: (scenario: ScenarioKey) => void;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-[18px] font-semibold">Scenario Comparison</h3>
+        <span className="text-slate-300">›</span>
+      </div>
+
+      <div className="grid gap-3">
+        <ScenarioCard
+          selected={activeScenario === "recommended"}
+          title="Full Execution Package"
+          subtitle="Cross-channel execution blueprint for launch readiness, HCP engagement, and orchestrated follow-through."
+          reach="240K HCPs"
+          onClick={() => onSelect("recommended")}
+        />
+        <ScenarioCard
+          selected={activeScenario === "balanced"}
+          title="Balanced Engagement Package"
+          subtitle="Orchestrated HCP engagement with moderated budget distribution and reduced delivery risk."
+          reach="185K HCPs"
+          onClick={() => onSelect("balanced")}
+        />
+        <ScenarioCard
+          selected={activeScenario === "efficiency"}
+          title="Efficiency Package"
+          subtitle="Lean execution model with stronger efficiency focus, tighter channel mix, and lower investment intensity."
+          reach="160K HCPs"
+          onClick={() => onSelect("efficiency")}
+        />
+      </div>
     </div>
   );
 }
 
-function AskRODEPanel({
+function InfoBadge({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      className="ml-2 inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-[#C8D7F3] bg-[#F4F8FF] text-[11px] font-semibold text-[#2463E8]"
+    >
+      i
+    </span>
+  );
+}
+
+function StatusPill({ status }: { status: TrackerItem["status"] }) {
+  const styles =
+    status === "Ready"
+      ? "border-green-200 bg-green-50 text-green-700"
+      : status === "In Production"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : status === "In Review"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : "border-slate-200 bg-slate-50 text-slate-600";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function ExecuteModal({
   open,
   onClose,
   plan,
@@ -593,138 +724,472 @@ function AskRODEPanel({
   onClose: () => void;
   plan: Plan;
 }) {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<CopilotMessage[]>([
-    {
-      id: 1,
-      role: "assistant",
-      content:
-        "Hi, I’m Ask RODE. I can help you review this plan, compare scenarios, identify execution risks, and recommend next steps.",
-    },
-  ]);
-  const [thinking, setThinking] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  async function handleSend(customPrompt?: string) {
-    const finalPrompt = (customPrompt ?? input).trim();
-    if (!finalPrompt) return;
-
-    const userMessage: CopilotMessage = {
-      id: Date.now(),
-      role: "user",
-      content: finalPrompt,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setThinking(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 700));
-
-    const assistantMessage: CopilotMessage = {
-      id: Date.now() + 1,
-      role: "assistant",
-      content: getCopilotReply(finalPrompt, plan),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-    setThinking(false);
-  }
+  useEffect(() => {
+    if (!open) {
+      setSent(false);
+    }
+  }, [open]);
 
   if (!open) return null;
 
+  const enabledServices = plan.services.filter((s) => s.enabled);
+
   return (
-    <div className="fixed bottom-24 right-6 z-50 w-full max-w-[430px]">
-      <div className="overflow-hidden rounded-[28px] border border-[#DFE6F2] bg-white shadow-[0_30px_80px_rgba(30,60,120,0.20)]">
-        <div className="flex items-start justify-between bg-gradient-to-r from-[#1F4CB8] to-[#2463E8] px-5 py-4 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101828]/35 px-4">
+      <div className="w-full max-w-4xl rounded-[30px] border border-[#DFE6F2] bg-white p-6 shadow-[0_30px_80px_rgba(30,60,120,0.18)]">
+        {!sent ? (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-[#2463E8]">
+                  Execution Briefing Preview
+                </p>
+                <h3 className="mt-1 text-3xl font-semibold text-[#1D263B]">
+                  Execute This Plan
+                </h3>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  This simulates a briefing package being routed to the relevant
+                  execution teams across omnichannel services.
+                </p>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="rounded-full border border-[#DCE4F2] px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-[26px] border border-[#E2E8F3] bg-[#FAFCFF] p-5">
+                <h4 className="text-lg font-semibold text-[#1D263B]">Brief Summary</h4>
+
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
+                    <span className="font-semibold text-[#1D263B]">Package:</span>{" "}
+                    {plan.packageName}
+                  </div>
+                  <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
+                    <span className="font-semibold text-[#1D263B]">Objective:</span>{" "}
+                    Cross-functional omnichannel execution with HCP engagement focus.
+                  </div>
+                  <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
+                    <span className="font-semibold text-[#1D263B]">Projected Reach:</span>{" "}
+                    {plan.projectedReach}
+                  </div>
+                  <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3">
+                    <span className="font-semibold text-[#1D263B]">Confidence:</span>{" "}
+                    {plan.confidence}
+                  </div>
+                  <div className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 leading-6">
+                    <span className="font-semibold text-[#1D263B]">AI Advice:</span>{" "}
+                    {plan.budgetAdvice}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-[#E2E8F3] bg-white p-5">
+                <h4 className="text-lg font-semibold text-[#1D263B]">
+                  Target Departments
+                </h4>
+
+                <div className="mt-4 space-y-3">
+                  {enabledServices.map((service) => (
+                    <div
+                      key={service.name}
+                      className="rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3"
+                    >
+                      <p className="text-sm font-semibold text-[#1D263B]">
+                        {service.name}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{service.subtitle}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setSent(true)}
+                  className="mt-6 w-full rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(36,99,232,0.25)]"
+                >
+                  Send Briefing to Execution Teams
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
           <div>
-            <div className="text-sm font-semibold">Ask RODE</div>
-            <div className="mt-1 text-sm text-white/85">
-              Your omnichannel decision &amp; execution copilot
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-[#2463E8]">
+                  Execution Pipeline
+                </p>
+                <h3 className="mt-1 text-3xl font-semibold text-[#1D263B]">
+                  Briefing Sent Successfully
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  RODE has simulated dispatch of the execution brief to the relevant teams.
+                </p>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="rounded-full border border-[#DCE4F2] px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              {[
+                "✔ EMMA Service Brief Sent",
+                "✔ Paid Media Strategy Queue Created",
+                "✔ Web Experience Intake Created",
+                "✔ Search & GEO Optimization Ticket Created",
+                "✔ The Lab Production Request Sent",
+                "✔ Messaging / WhatsApp Flow Setup Triggered",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-5 py-4 text-[15px] text-slate-700"
+                >
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-          <button
-            onClick={onClose}
-            className="rounded-full border border-white/20 px-3 py-1 text-sm hover:bg-white/10"
-          >
-            Close
-          </button>
-        </div>
+function AdoptionLevelCard({
+  level,
+  title,
+  subtitle,
+  share,
+}: {
+  level: string;
+  title: string;
+  subtitle: string;
+  share: string;
+}) {
+  return (
+    <div className="rounded-[20px] border border-[#E2E8F3] bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+        {level}
+      </p>
+      <p className="mt-2 text-[17px] font-semibold text-[#1D263B]">{title}</p>
+      <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      <div className="mt-4 rounded-xl bg-[#F8FAFE] px-3 py-2 text-sm text-slate-700">
+        HCP distribution: <span className="font-semibold">{share}</span>
+      </div>
+    </div>
+  );
+}
 
-        <div className="border-b border-[#E8EDF6] px-4 py-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Quick prompts
-          </div>
+function applyCopilotChange(plan: Plan, input: string) {
+  const lower = input.toLowerCase();
+  let answer =
+    "Recommendation: Keep the current execution package, but test a lighter paid media burst and stronger web + EMMA continuity layer for better long-tail engagement.";
+  let updatedPlan: Plan = { ...plan };
 
-          <div className="flex flex-wrap gap-2">
-            {[
-              "Review execution risks",
-              "Compare the two scenarios",
-              "Suggest next steps",
-              "Review budget allocation",
-            ].map((item) => (
-              <button
-                key={item}
-                onClick={() => handleSend(item)}
-                className="rounded-full border border-[#DCE4F2] bg-[#F8FAFE] px-3 py-2 text-xs text-slate-600 hover:bg-white"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
+  if (lower.includes("reduce") && lower.includes("budget")) {
+    answer =
+      "Recommendation: Reduce Paid Media by 30k CHF and reallocate 20k to Email and 10k to Search. Expected engagement remains stable while budget efficiency improves.";
 
-        <div className="max-h-[420px] overflow-y-auto px-4 py-4">
-          <div className="space-y-3">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[86%] whitespace-pre-line rounded-[20px] px-4 py-3 text-sm leading-6 ${
-                    message.role === "user"
-                      ? "bg-[#2463E8] text-white"
-                      : "border border-[#E2E8F3] bg-[#F8FAFE] text-slate-700"
-                  }`}
-                >
-                  {message.content}
-                </div>
-              </div>
-            ))}
+    updatedPlan = {
+      ...balancedPlan,
+      budgetAdvice:
+        "Budget has been optimized for efficiency. Paid Media has been reduced, while Email and Search have been strengthened to preserve engagement while improving cost efficiency.",
+    };
+  } else if (lower.includes("whatsapp")) {
+    answer =
+      "Recommendation: Add a stronger WhatsApp outbound layer in pre and post phases to improve continuity and meeting attendance. Messaging budget can increase from 8% to 12%.";
 
-            {thinking ? (
-              <div className="flex justify-start">
-                <div className="max-w-[86%] rounded-[20px] border border-[#E2E8F3] bg-[#F8FAFE] px-4 py-3 text-sm text-slate-500">
-                  RODE is thinking...
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
+    updatedPlan = {
+      ...plan,
+      packageName: "Messaging-Enhanced Execution Package",
+      confidence: "87%",
+      projectedEngagement: "21% – 29%",
+      budgetAdvice:
+        "Messaging has been expanded to strengthen continuity across the journey. WhatsApp outbound now plays a larger role in pre-event awareness and post-event re-entry.",
+      budgetAllocation: [
+        { channel: "Paid Media", amount: 175000 },
+        { channel: "Web", amount: 115000 },
+        { channel: "Email", amount: 95000 },
+        { channel: "Search", amount: 55000 },
+        { channel: "Messaging", amount: 60000 },
+      ],
+      channelMix: [
+        "7-email launch cadence",
+        "Dedicated campaign web hub",
+        "Programmatic and LinkedIn media burst",
+        "Search & GEO visibility uplift",
+        "WhatsApp outbound save-the-date and reminder flow",
+        "Post-launch re-entry messaging",
+      ],
+      pre: [
+        "2 teaser emails to priority HCP audiences",
+        "2-step WhatsApp outbound save-the-date sequence",
+        "Disease awareness web landing page",
+        "Paid media teaser burst",
+      ],
+      post: [
+        "2 follow-up emails with next-best-content",
+        "2-step WhatsApp re-entry and reminder touchpoint",
+        "Retargeting burst for engaged audiences",
+        "Content hub expansion and optimization review",
+      ],
+    };
+  } else if (lower.includes("congress")) {
+    answer =
+      "Recommendation: Shift the strategy toward congress activation with higher emphasis on reminders, field-force linked content, and a tighter pre-event media burst.";
 
-        <div className="border-t border-[#E8EDF6] p-4">
-          <div className="flex gap-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about risks, budget, scenarios, or next steps..."
-              className="flex-1 rounded-2xl border border-[#D9E1EF] px-4 py-3 text-sm outline-none focus:border-[#2463E8]"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSend();
-              }}
-            />
-            <button
-              onClick={() => handleSend()}
-              className="rounded-2xl bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Send
-            </button>
-          </div>
+    updatedPlan = {
+      ...plan,
+      packageName: "Congress Activation Package",
+      packageDescription:
+        "Execution blueprint tailored to congress presence, pre-event awareness, on-site amplification, and post-congress follow-through.",
+      maturity: "Advanced",
+      confidence: "85%",
+      projectedReach: "185K HCPs",
+      projectedEngagement: "22% – 30%",
+      projectedRoi: "2.9x – 4.1x",
+      budgetAdvice:
+        "The strategy has been shifted toward congress activation with a tighter pre-event awareness burst, stronger reminder logic, and a higher emphasis on follow-up content after the event.",
+      channelMix: [
+        "4-email congress cadence",
+        "Congress landing page / hub",
+        "Programmatic and LinkedIn awareness burst",
+        "WhatsApp reminder flow",
+        "Search visibility for congress queries",
+        "Post-congress recap content",
+      ],
+      pre: [
+        "2 congress teaser emails",
+        "WhatsApp save-the-date message",
+        "Pre-event paid media burst",
+        "Congress landing page go-live",
+      ],
+      during: [
+        "1 onsite launch email",
+        "LinkedIn and programmatic amplification",
+        "Congress hub updates and recap highlights",
+        "Field-force connected content distribution",
+      ],
+      post: [
+        "2 congress follow-up emails",
+        "WhatsApp reminder and recap touchpoint",
+        "Retargeting for attendees and engaged HCPs",
+        "Congress content archive and insight summary",
+      ],
+      budgetAllocation: [
+        { channel: "Paid Media", amount: 170000 },
+        { channel: "Web", amount: 110000 },
+        { channel: "Email", amount: 90000 },
+        { channel: "Search", amount: 50000 },
+        { channel: "Messaging", amount: 80000 },
+      ],
+    };
+  } else if (lower.includes("engagement")) {
+    answer =
+      "Recommendation: Increase EMMA cadence depth and strengthen follow-up content sequencing. This should improve projected HCP engagement by 3–4 percentage points.";
+
+    updatedPlan = {
+      ...plan,
+      packageName: "Engagement-Optimized Package",
+      confidence: "88%",
+      projectedEngagement: "23% – 31%",
+      budgetAdvice:
+        "This version strengthens the engagement layer by increasing email touchpoints, improving post-launch sequencing, and tightening continuity across channels.",
+      channelMix: [
+        "9-email engagement cadence",
+        "Dedicated campaign web hub",
+        "Programmatic and LinkedIn media burst",
+        "Search & GEO visibility uplift",
+        "WhatsApp outbound reminders",
+        "Enhanced post-launch nurture stream",
+      ],
+      pre: [
+        "3 teaser emails to priority HCP audiences",
+        "WhatsApp outbound save-the-date message",
+        "Disease awareness web landing page",
+        "Paid media teaser burst",
+      ],
+      during: [
+        "4 launch emails across priority segments",
+        "Campaign hub go-live with modular content",
+        "Programmatic + LinkedIn amplification",
+        "Search and GEO visibility push",
+      ],
+      post: [
+        "3 follow-up emails with next-best-content",
+        "WhatsApp outbound reminder and re-entry touchpoint",
+        "Retargeting burst for engaged audiences",
+        "Content hub expansion and optimization review",
+      ],
+      budgetAllocation: [
+        { channel: "Paid Media", amount: 180000 },
+        { channel: "Web", amount: 115000 },
+        { channel: "Email", amount: 115000 },
+        { channel: "Search", amount: 50000 },
+        { channel: "Messaging", amount: 40000 },
+      ],
+    };
+  }
+
+  return { updatedPlan, answer };
+}
+
+function CopilotPanel({
+  plan,
+  onApply,
+}: {
+  plan: Plan;
+  onApply: (updatedPlan: Plan) => void;
+}) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState(
+    "Ask RODE to improve the plan, reduce budget, rebalance channels, or generate an alternative scenario."
+  );
+  const [loading, setLoading] = useState(false);
+
+  const quickPrompts = [
+    "Improve engagement strategy",
+    "Reduce budget by 20%",
+    "Add WhatsApp outbound",
+    "Create congress activation plan",
+  ];
+
+  function handleAsk() {
+    if (!question.trim()) return;
+    setLoading(true);
+
+    setTimeout(() => {
+      const result = applyCopilotChange(plan, question);
+      setAnswer(result.answer);
+      onApply(result.updatedPlan);
+      setLoading(false);
+    }, 700);
+  }
+
+  return (
+    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-[18px] font-semibold">Ask RODE</h3>
+        <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-3 py-1 text-xs font-medium text-[#2F73F0]">
+          AI Copilot
         </div>
       </div>
+
+      <p className="text-[14px] leading-6 text-slate-500">
+        Refine strategy, rebalance budget, or generate a new recommendation.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        {quickPrompts.map((item) => (
+          <button
+            key={item}
+            onClick={() => setQuestion(item)}
+            className="w-full rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3 text-left text-sm text-slate-600 hover:border-[#CFE0FF]"
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
+      <textarea
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder="Ask RODE anything..."
+        className="mt-4 min-h-[110px] w-full rounded-2xl border border-[#E2E8F3] px-4 py-3 text-sm outline-none focus:border-[#2463E8]"
+      />
+
+      <button
+        onClick={handleAsk}
+        disabled={loading}
+        className="mt-4 w-full rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+      >
+        {loading ? "Thinking..." : "Ask RODE"}
+      </button>
+
+      <div className="mt-4 rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Copilot Response
+        </p>
+        <p className="mt-3 text-sm leading-6 text-slate-700">{answer}</p>
+      </div>
+    </div>
+  );
+}
+
+function TimelineSection({ plan }: { plan: Plan }) {
+  return (
+    <div className="mt-6 rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+      <div className="mb-6 flex items-center gap-4">
+        <h3 className="text-[22px] font-semibold">Journey Timeline</h3>
+        <div className="h-px flex-1 bg-[#E3E8F2]" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {[
+          { title: "Pre", month: "Weeks 1–2", items: plan.pre },
+          { title: "During", month: "Weeks 3–5", items: plan.during },
+          { title: "Post", month: "Weeks 6–8", items: plan.post },
+        ].map((phase, index) => (
+          <div
+            key={phase.title}
+            className="relative rounded-[22px] border border-[#E1E7F2] bg-[#FCFDFF] p-5"
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2F73F0] text-sm font-semibold text-white">
+                {index + 1}
+              </div>
+              <div>
+                <h4 className="text-[18px] font-semibold">{phase.title}</h4>
+                <p className="text-sm text-slate-500">{phase.month}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {phase.items.map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-600"
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getScenarioFromPlan(plan: Plan): ScenarioKey {
+  if (plan.packageName === balancedPlan.packageName) return "balanced";
+  if (plan.packageName === efficiencyPlan.packageName) return "efficiency";
+  return "recommended";
+}
+
+function HighlightPill({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-full border border-[#DCE6F7] bg-[#F7FAFF] px-3 py-2 text-sm text-slate-700">
+      {children}
+    </div>
+  );
+}
+
+function AIBasisPill({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-full border border-[#D6E3FF] bg-white px-3 py-2 text-sm text-[#3A4A67] shadow-[0_4px_10px_rgba(36,99,232,0.05)]">
+      {children}
     </div>
   );
 }
@@ -733,18 +1198,39 @@ export default function Home() {
   const [prompt, setPrompt] = useState(
     "I'm launching Product X in Germany with 500k CHF budget and want strong HCP engagement."
   );
-  const [plan, setPlan] = useState<Plan>(initialPlan);
+  const [plan, setPlan] = useState<Plan>(recommendedPlan);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [showExecuteModal, setShowExecuteModal] = useState(false);
-  const [showCopilot, setShowCopilot] = useState(false);
-  const [activeTab, setActiveTab] = useState("planner");
+  const [activeTab, setActiveTab] = useState<TabKey>("planner");
+  const [activeScenario, setActiveScenario] = useState<ScenarioKey>("recommended");
 
   const serviceCount = useMemo(
     () => plan.services.filter((service) => service.enabled).length,
     [plan.services]
   );
+
+  const trackerSummary = useMemo(() => {
+    return {
+      submitted: trackerItems.filter((i) => i.status === "Submitted").length,
+      inReview: trackerItems.filter((i) => i.status === "In Review").length,
+      inProduction: trackerItems.filter((i) => i.status === "In Production").length,
+      ready: trackerItems.filter((i) => i.status === "Ready").length,
+    };
+  }, []);
+
+  const totalBudget = useMemo(
+    () => plan.budgetAllocation.reduce((sum, item) => sum + item.amount, 0),
+    [plan.budgetAllocation]
+  );
+
+  function applyScenario(scenario: ScenarioKey) {
+    setActiveScenario(scenario);
+    if (scenario === "recommended") setPlan(recommendedPlan);
+    if (scenario === "balanced") setPlan(balancedPlan);
+    if (scenario === "efficiency") setPlan(efficiencyPlan);
+  }
 
   async function handleGeneratePlan() {
     setLoading(true);
@@ -765,6 +1251,7 @@ export default function Home() {
 
       const data = (await response.json()) as Plan;
       setPlan(data);
+      setActiveScenario(getScenarioFromPlan(data));
     } catch (err) {
       console.error(err);
       setError(
@@ -783,22 +1270,11 @@ export default function Home() {
     <>
       <main className="min-h-screen bg-[#F4F6FB] p-7 text-[#1D263B]">
         <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-[1440px] overflow-hidden rounded-[34px] border border-[#E2E7F0] bg-[#F8FAFE] shadow-[0_30px_80px_rgba(29,38,59,0.08)]">
-          <SideNav />
+          <SideNav activeTab={activeTab} onTabChange={setActiveTab} />
 
           <section className="flex-1">
-            <div className="flex items-center justify-between border-b border-[#E3E8F2] bg-white/70 px-7 py-5 backdrop-blur">
-              <div className="text-[20px] font-medium text-slate-700">
-                Welcome, <span className="font-semibold text-[#1D263B]">Caner</span>
-              </div>
-
+            <div className="flex items-center justify-end border-b border-[#E3E8F2] bg-white/70 px-7 py-5 backdrop-blur">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowCopilot(true)}
-                  className="rounded-full border border-[#DCE4F2] bg-white px-4 py-2 text-sm font-medium text-[#2463E8] hover:bg-[#F7FAFF]"
-                >
-                  Ask RODE
-                </button>
-
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1E7F3] bg-white text-slate-400">
                   ◔
                 </div>
@@ -806,19 +1282,25 @@ export default function Home() {
                   ⊙
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2F73F0] text-lg font-semibold text-white">
-                  CY
+                  RF
                 </div>
               </div>
             </div>
 
             <div className="px-7 py-8">
               <h1 className="text-[52px] font-semibold tracking-tight text-[#1D263B]">
-                Welcome, Caner
+                Hi, Rachel
               </h1>
-              <h2 className="mt-2 text-[30px] font-medium text-[#1D263B]">
-                What do you want to{" "}
-                <span className="text-[#2463E8]">achieve today?</span>
-              </h2>
+
+              <div className="mt-4">
+                <div className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#2463E8]">
+                  Ask RODE
+                </div>
+                <h2 className="mt-2 text-[30px] font-medium text-[#1D263B]">
+                  What do you want to{" "}
+                  <span className="text-[#2463E8]">achieve today?</span>
+                </h2>
+              </div>
 
               <div className="mt-8 flex items-center gap-4 rounded-[18px] border border-[#DFE5F0] bg-white px-5 py-4 shadow-sm">
                 <input
@@ -888,112 +1370,158 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                      <div className="mb-6 rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
+                              Recommended path
+                            </p>
+                            <h4 className="mt-2 text-[24px] font-semibold text-[#1D263B]">
+                              {plan.packageName}
+                            </h4>
+                            <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-600">
+                              {plan.budgetAdvice}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 xl:min-w-[260px]">
+                            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                                Confidence
+                              </p>
+                              <p className="mt-1 text-xl font-semibold text-[#2463E8]">
+                                {plan.confidence}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                                Maturity
+                              </p>
+                              <p className="mt-1 text-xl font-semibold text-[#1D263B]">
+                                {plan.maturity}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                         <div>
-                          <h4 className="text-[22px] font-semibold">
-                            {plan.packageName}
-                          </h4>
-                          <p className="mt-2 text-[15px] leading-8 text-slate-500">
+                          <p className="text-[15px] leading-8 text-slate-500">
                             {plan.packageDescription}
                           </p>
 
-                          <div className="mt-5 space-y-4 text-[17px]">
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-600">Projected reach</span>
-                              <span className="font-semibold">{plan.projectedReach}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-600">Expected engagement</span>
-                              <span className="font-semibold">{plan.projectedEngagement}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-600">Estimated ROI</span>
-                              <span className="font-semibold">{plan.projectedRoi}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-600">Services activated</span>
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            <HighlightPill>
+                              <span className="text-slate-500">Services:</span>{" "}
                               <span className="font-semibold">{serviceCount}</span>
+                            </HighlightPill>
+                            <HighlightPill>
+                              <span className="text-slate-500">Budget:</span>{" "}
+                              <span className="font-semibold">
+                                {formatCurrencyCompact(totalBudget)} CHF
+                              </span>
+                            </HighlightPill>
+                            <HighlightPill>
+                              <span className="text-slate-500">Reach:</span>{" "}
+                              <span className="font-semibold">{plan.projectedReach}</span>
+                            </HighlightPill>
+                          </div>
+
+                          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Projected reach</p>
+                              <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                                {plan.projectedReach}
+                              </p>
+                            </div>
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Expected engagement</p>
+                              <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                                {plan.projectedEngagement}
+                              </p>
+                            </div>
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Estimated ROI</p>
+                              <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                                {plan.projectedRoi}
+                              </p>
                             </div>
                           </div>
 
-                          <div className="mt-7 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                            <div className="flex items-center justify-between gap-4">
-                              <h5 className="text-[18px] font-semibold">
-                                Why This Recommendation?
-                              </h5>
-                              <button
-                                onClick={() => setShowCopilot(true)}
-                                className="rounded-full border border-[#DCE4F2] px-3 py-1 text-xs font-medium text-[#2463E8] hover:bg-white"
-                              >
-                                Ask RODE
-                              </button>
+                          <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-[18px] font-semibold">AI rationale</h5>
+                              <span className="text-sm text-slate-400">Evidence-based logic</span>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <AIBasisPill>Germany launch fit</AIBasisPill>
+                              <AIBasisPill>High HCP engagement potential</AIBasisPill>
+                              <AIBasisPill>Strong continuity across journey</AIBasisPill>
+                              <AIBasisPill>Balanced awareness + follow-through</AIBasisPill>
                             </div>
 
                             <ul className="mt-4 space-y-3 text-[15px] leading-6 text-slate-600">
                               <li>• Germany launch campaigns perform best with strong paid media bursts</li>
                               <li>• EMMA multi-touch journeys increase HCP engagement</li>
-                              <li>• WhatsApp outbound improves congress attendance by +18%</li>
-                              <li>• Search visibility drives discovery traffic</li>
+                              <li>• WhatsApp outbound improves congress attendance and continuity</li>
+                              <li>• Search visibility drives discoverability and evidence traffic</li>
                             </ul>
                           </div>
                         </div>
 
-                        <div className="rounded-[22px] bg-[#FCFDFF] p-2">
-                          <BudgetDonut items={plan.budgetAllocation} />
+                        <div className="space-y-5">
+                          <div className="rounded-[22px] bg-[#FCFDFF] p-2">
+                            <BudgetDonut items={plan.budgetAllocation} />
+                          </div>
+
+                          <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-[18px] font-semibold">
+                                Recommended Channel Mix
+                              </h5>
+                              <span className="text-sm text-slate-400">
+                                {plan.channelMix.length} elements
+                              </span>
+                            </div>
+
+                            <div className="mt-4 space-y-3">
+                              {plan.channelMix.map((item) => (
+                                <div
+                                  key={item}
+                                  className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-700"
+                                >
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-5">
-                      <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                        <div className="mb-4 flex items-center justify-between">
-                          <h3 className="text-[18px] font-semibold">Scenario Comparison</h3>
-                          <span className="text-slate-300">›</span>
-                        </div>
-
-                        <div className="grid gap-3">
-                          <ScenarioCard
-                            selected
-                            title="Full Execution Package"
-                            subtitle="Cross-channel execution for launch and orchestrated HCP engagement"
-                            reach="240K HCP"
-                          />
-                          <ScenarioCard
-                            title="Balanced Engagement Package"
-                            subtitle="Orchestrated HCP engagement with moderated budget distribution"
-                            reach="152K HCP"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                        <div className="mb-4 flex items-center justify-between">
-                          <h3 className="text-[18px] font-semibold">RODE Intelligence</h3>
-                          <span className="text-slate-300">›</span>
-                        </div>
-
-                        <p className="text-[15px] text-slate-500">
-                          Based on 184 similar campaigns
-                        </p>
-
-                        <div className="mt-5 text-[17px] leading-8 text-slate-700">
-                          <p>
-                            Best-performing channel mix:
-                            <span className="ml-2 font-semibold">
-                              Paid Media + EMMA + Web
-                            </span>
-                          </p>
-                        </div>
-
-                        <div className="mt-5 inline-flex rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-4 py-2 text-sm font-medium text-white">
-                          ↑ 3.1x average ROI
-                        </div>
-                      </div>
+                      <ScenarioComparisonPanel
+                        activeScenario={activeScenario}
+                        onSelect={applyScenario}
+                      />
+                      <CopilotPanel
+                        plan={plan}
+                        onApply={(updatedPlan) => {
+                          setPlan(updatedPlan);
+                          setActiveScenario(getScenarioFromPlan(updatedPlan));
+                        }}
+                      />
 
                       <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center justify-between">
                           <h3 className="text-[18px] font-semibold">Export Plan</h3>
                           <span className="text-slate-300">›</span>
+                        </div>
+
+                        <div className="mb-4 rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3 text-sm text-slate-600">
+                          Enabled services: {serviceCount}
                         </div>
 
                         <button
@@ -1006,38 +1534,56 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="mt-6 rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
-                    <div className="mb-5 flex items-center gap-4">
-                      <h3 className="text-[22px] font-semibold">Journey Orchestration</h3>
-                      <div className="h-px flex-1 bg-[#E3E8F2]" />
+                  <TimelineSection plan={plan} />
+
+                  <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between">
+                        <h3 className="text-[22px] font-semibold">
+                          Quick Access to Services
+                        </h3>
+                        <span className="text-sm text-slate-400">Standalone access</span>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {quickAccessServices.map((service) => (
+                          <a
+                            key={service.name}
+                            href={service.href}
+                            className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4 text-[15px] text-slate-700 transition hover:border-[#CFE0FF] hover:shadow-sm"
+                          >
+                            <div className="flex items-center">
+                              <span className="font-medium">{service.name}</span>
+                              <InfoBadge text={service.description} />
+                            </div>
+                          </a>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-3">
-                      <div className="rounded-[22px] border border-[#E1E7F2] bg-[#FCFDFF] p-5">
-                        <h4 className="text-[18px] font-semibold">Pre</h4>
-                        <div className="mt-4 space-y-4 text-[15px] text-slate-600">
-                          {plan.pre.map((item) => (
-                            <div key={item}>{item}</div>
-                          ))}
-                        </div>
+                    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between">
+                        <h3 className="text-[22px] font-semibold">RICH</h3>
+                        <span className="text-sm text-slate-400">AI-supported platform</span>
                       </div>
 
-                      <div className="rounded-[22px] border border-[#E1E7F2] bg-[#FCFDFF] p-5">
-                        <h4 className="text-[18px] font-semibold">During</h4>
-                        <div className="mt-4 space-y-4 text-[15px] text-slate-600">
-                          {plan.during.map((item) => (
-                            <div key={item}>{item}</div>
-                          ))}
-                        </div>
-                      </div>
+                      <div className="rounded-[20px] border border-[#DCE6F7] bg-gradient-to-br from-[#F7FAFF] to-[#EEF4FF] p-5">
+                        <p className="text-[18px] font-semibold text-[#1D263B]">
+                          Roche Intelligent Content Hub
+                        </p>
+                        <p className="mt-3 text-[15px] leading-7 text-slate-600">
+                          Create content, explore AI-supported content workflows, and
+                          connect execution planning with content generation.
+                        </p>
 
-                      <div className="rounded-[22px] border border-[#E1E7F2] bg-[#FCFDFF] p-5">
-                        <h4 className="text-[18px] font-semibold">Post</h4>
-                        <div className="mt-4 space-y-4 text-[15px] text-slate-600">
-                          {plan.post.map((item) => (
-                            <div key={item}>{item}</div>
-                          ))}
-                        </div>
+                        <a
+                          href="https://studio.roche.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-5 inline-flex rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(36,99,232,0.18)]"
+                        >
+                          Go to RICH
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -1045,63 +1591,249 @@ export default function Home() {
               )}
 
               {activeTab === "execution" && (
-                <div className="mt-6 rounded-[24px] border border-[#E1E7F2] bg-white p-8 shadow-sm">
-                  <h3 className="text-[24px] font-semibold">Execution Pipeline</h3>
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Submitted</p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.submitted}</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">In Review</p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.inReview}</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">In Production</p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.inProduction}</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Ready</p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.ready}</p>
+                    </div>
+                  </div>
 
-                  <div className="mt-6 grid gap-4">
-                    {[
-                      "✔ EMMA Service Brief Sent",
-                      "✔ Paid Media Strategy Queue",
-                      "✔ Web Experience Intake Created",
-                      "✔ Search & GEO Optimization Ticket",
-                      "✔ The Lab Content Production Request",
-                      "✔ Messaging / WhatsApp Flow Setup",
-                    ].map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-2xl border border-[#E2E8F3] bg-[#FCFDFF] px-5 py-4 text-[16px] text-slate-700"
-                      >
-                        {item}
+                  <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-[24px] font-semibold">Execution Tracker</h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Follow active requests across execution teams and services.
+                        </p>
                       </div>
-                    ))}
+                      <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
+                        Live request status
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-[20px] border border-[#E2E8F3]">
+                      <div className="grid grid-cols-[2fr_1.3fr_1fr_1fr_2fr] bg-[#F8FAFE] px-5 py-4 text-sm font-semibold text-slate-600">
+                        <div>Request</div>
+                        <div>Owner</div>
+                        <div>Status</div>
+                        <div>Due Date</div>
+                        <div>Last Update</div>
+                      </div>
+
+                      {trackerItems.map((item, idx) => (
+                        <div
+                          key={`${item.request}-${idx}`}
+                          className="grid grid-cols-[2fr_1.3fr_1fr_1fr_2fr] items-start border-t border-[#E2E8F3] bg-white px-5 py-5 text-sm"
+                        >
+                          <div className="pr-4 font-medium text-[#1D263B]">{item.request}</div>
+                          <div className="pr-4 text-slate-600">{item.owner}</div>
+                          <div className="pr-4">
+                            <StatusPill status={item.status} />
+                          </div>
+                          <div className="pr-4 text-slate-600">{item.dueDate}</div>
+                          <div className="text-slate-500">{item.lastUpdate}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === "performance" && (
-                <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                  <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
-                    <h3 className="text-[22px] font-semibold">RODE Intelligence</h3>
-                    <p className="mt-4 text-[15px] text-slate-500">
-                      Based on 184 similar campaigns
-                    </p>
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Campaigns launched</p>
+                      <p className="mt-2 text-3xl font-semibold">28</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Total reach</p>
+                      <p className="mt-2 text-3xl font-semibold">1.8M</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Avg engagement</p>
+                      <p className="mt-2 text-3xl font-semibold">21%</p>
+                    </div>
+                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+                      <p className="text-sm text-slate-500">Active markets</p>
+                      <p className="mt-2 text-3xl font-semibold">14</p>
+                    </div>
+                  </div>
 
-                    <div className="mt-6 space-y-3 text-[16px]">
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Best performing mix: Paid Media + EMMA + Web
+                  <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-[22px] font-semibold">Brand Snapshot</h3>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Product X performance overview across current priority markets.
+                          </p>
+                        </div>
+                        <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
+                          Brand performance
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Average ROI: 3.1x
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                          <p className="text-sm text-slate-500">Top-performing campaign</p>
+                          <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                            Germany HCP Launch Sprint
+                          </p>
+                          <p className="mt-3 text-sm text-slate-600">
+                            Reach: 240K HCPs · Engagement: 27% · ROI: 4.3x
+                          </p>
+                        </div>
+
+                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                          <p className="text-sm text-slate-500">Best-performing channel mix</p>
+                          <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                            Paid Media + EMMA + Web
+                          </p>
+                          <p className="mt-3 text-sm text-slate-600">
+                            Consistently associated with higher reach and engagement uplift.
+                          </p>
+                        </div>
+
+                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                          <p className="text-sm text-slate-500">Recent campaign performance</p>
+                          <div className="mt-4 space-y-3 text-sm text-slate-700">
+                            <div className="flex items-center justify-between">
+                              <span>Oncology Congress Series</span>
+                              <span className="font-medium">18% engagement</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Cardiology Awareness</span>
+                              <span className="font-medium">146K reach</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Germany Launch Sprint</span>
+                              <span className="font-medium">4.3x ROI</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                          <p className="text-sm text-slate-500">Performance signals</p>
+                          <div className="mt-4 space-y-3 text-sm text-slate-700">
+                            <div>• Reach trending up in DE and UK</div>
+                            <div>• Strong email completion rates in launch journeys</div>
+                            <div>• Search visibility improving in evidence queries</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Average HCP reach: 210k
+                    </div>
+
+                    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+                      <div className="mb-5 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-[22px] font-semibold">CES Adoption Hub</h3>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Snapshot of current adoption distribution and ladder position.
+                          </p>
+                        </div>
+                        <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
+                          Connected to CES
+                        </div>
+                      </div>
+
+                      <div className="rounded-[20px] border border-[#DCE6F7] bg-gradient-to-br from-[#F7FAFF] to-[#EEF4FF] p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm text-slate-500">Current adoption snapshot</p>
+                            <p className="mt-2 text-[24px] font-semibold text-[#1D263B]">
+                              Advocacy + Preference
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              28% of current HCPs are in higher-adoption segments, with
+                              steady movement from Awareness to Trial.
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                              Snapshot
+                            </p>
+                            <p className="mt-1 text-lg font-semibold text-[#2463E8]">
+                              Mar 03, 2026
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 grid gap-3 md:grid-cols-3">
+                          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                            <p className="text-sm text-slate-500">No adoption</p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">43%</p>
+                          </div>
+                          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                            <p className="text-sm text-slate-500">Awareness + Trial</p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">55%</p>
+                          </div>
+                          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                            <p className="text-sm text-slate-500">Preference + Advocacy</p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">28%</p>
+                          </div>
+                        </div>
+
+                        <a
+                          href="#"
+                          className="mt-5 inline-flex rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(36,99,232,0.18)]"
+                        >
+                          Open CES Adoption Dashboard
+                        </a>
                       </div>
                     </div>
                   </div>
 
                   <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
-                    <h3 className="text-[22px] font-semibold">Predicted Outcomes</h3>
+                    <div className="mb-5 flex items-center justify-between">
+                      <h3 className="text-[22px] font-semibold">Adoption Ladder Overview</h3>
+                      <span className="text-sm text-slate-400">Connected summary</span>
+                    </div>
 
-                    <div className="mt-6 space-y-3 text-[16px]">
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Reach: 240k HCP
-                      </div>
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Engagement: 22%
-                      </div>
-                      <div className="rounded-2xl border border-[#E2E8F3] px-4 py-3">
-                        Content consumption: 14k
-                      </div>
+                    <div className="grid gap-4 lg:grid-cols-5">
+                      <AdoptionLevelCard
+                        level="0"
+                        title="No adoption"
+                        subtitle="Non-user"
+                        share="43%"
+                      />
+                      <AdoptionLevelCard
+                        level="1"
+                        title="Awareness"
+                        subtitle="Low adoption"
+                        share="31%"
+                      />
+                      <AdoptionLevelCard
+                        level="2"
+                        title="Consideration"
+                        subtitle="Medium-low adoption"
+                        share="11%"
+                      />
+                      <AdoptionLevelCard
+                        level="3"
+                        title="Trial"
+                        subtitle="Medium adoption"
+                        share="24%"
+                      />
+                      <AdoptionLevelCard
+                        level="4-5"
+                        title="Preference / Advocacy"
+                        subtitle="Higher adoption"
+                        share="18%"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1109,24 +1841,11 @@ export default function Home() {
             </div>
           </section>
         </div>
-
-        <button
-          onClick={() => setShowCopilot(true)}
-          className="fixed bottom-6 right-6 z-40 rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-4 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(36,99,232,0.32)]"
-        >
-          Ask RODE
-        </button>
       </main>
 
       <ExecuteModal
         open={showExecuteModal}
         onClose={() => setShowExecuteModal(false)}
-        plan={plan}
-      />
-
-      <AskRODEPanel
-        open={showCopilot}
-        onClose={() => setShowCopilot(false)}
         plan={plan}
       />
     </>
