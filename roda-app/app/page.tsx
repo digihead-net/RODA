@@ -341,6 +341,30 @@ type TimelineLaneItem = {
   title: string;
 };
 
+const trendData = [
+  { label: "Jan", email: 14, web: 11, media: 16, search: 9, messaging: 8 },
+  { label: "Feb", email: 16, web: 12, media: 18, search: 10, messaging: 8 },
+  { label: "Mar", email: 18, web: 14, media: 22, search: 11, messaging: 9 },
+  { label: "Apr", email: 20, web: 15, media: 24, search: 13, messaging: 10 },
+  { label: "May", email: 22, web: 17, media: 23, search: 15, messaging: 11 },
+  { label: "Jun", email: 24, web: 18, media: 25, search: 16, messaging: 12 },
+];
+
+const efficiencyData = [
+  { channel: "Email", budget: 100, engagement: 24 },
+  { channel: "Web", budget: 120, engagement: 18 },
+  { channel: "Paid Media", budget: 190, engagement: 25 },
+  { channel: "Search", budget: 50, engagement: 16 },
+  { channel: "Messaging", budget: 40, engagement: 12 },
+];
+
+const marketData = [
+  { market: "Germany", reach: "240K", engagement: "27%", roi: "4.3x", status: "Leading" },
+  { market: "UK", reach: "182K", engagement: "22%", roi: "3.7x", status: "Strong" },
+  { market: "Italy", reach: "151K", engagement: "19%", roi: "3.2x", status: "Stable" },
+  { market: "Spain", reach: "132K", engagement: "17%", roi: "2.9x", status: "Watch" },
+];
+
 function RocheLogo() {
   return (
     <svg width="86" height="44" viewBox="0 0 86 44" fill="none" aria-hidden="true">
@@ -560,24 +584,25 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
       return "conic-gradient(#E5ECF7 0% 100%)";
     }
 
-    return `conic-gradient(${segments
-      .map((seg, i) => {
-        const prevEnd =
-          i === 0
-            ? 0
-            : segments.slice(0, i).reduce((acc, s) => acc + (s.amount / total) * 100, 0);
-        const end = prevEnd + (seg.amount / total) * 100;
-        return `${seg.color} ${prevEnd}% ${end}%`;
+    let cursor = 0;
+    const stops = segments
+      .map((seg) => {
+        const start = cursor;
+        const end = cursor + (seg.amount / total) * 100;
+        cursor = end;
+        return `${seg.color} ${start}% ${end}%`;
       })
-      .join(",")})`;
+      .join(",");
+
+    return `conic-gradient(${stops})`;
   }, [segments, total]);
 
   const donutSize = 320;
   const center = donutSize / 2;
-  const labelRadius = 132; // label position over slices
+  const labelRadius = 126;
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-center">
+    <div className="grid gap-8 xl:grid-cols-[400px_minmax(0,1fr)] xl:items-center">
       <div className="flex justify-center">
         <div className="relative" style={{ width: donutSize, height: donutSize }}>
           <div
@@ -595,11 +620,11 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
             return (
               <div
                 key={seg.channel}
-                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/70 bg-white/88 px-2 py-1 text-center shadow-[0_6px_16px_rgba(29,38,59,0.10)] backdrop-blur-sm"
+                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/80 bg-white/92 px-2.5 py-1.5 text-center shadow-[0_6px_16px_rgba(29,38,59,0.10)] backdrop-blur-sm"
                 style={{
                   left: x,
                   top: y,
-                  minWidth: 72,
+                  minWidth: 78,
                 }}
               >
                 <p className="text-[13px] font-semibold leading-4 text-[#1D263B]">
@@ -647,6 +672,7 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
     </div>
   );
 }
+
 function ScenarioCard({
   title,
   selected = false,
@@ -1332,11 +1358,11 @@ function TimelineSection({ plan }: { plan: Plan }) {
                         <div className="absolute left-0 right-0 top-1/2 z-0 h-px -translate-y-1/2 bg-[#E7EDF7]" />
 
                         {phaseIndex === 1 ? (
-                          <div className="absolute left-1/2 top-3 bottom-3 z-10 w-px -translate-x-1/2 bg-[#2F73F0]/35" />
+                          <div className="absolute left-[58%] top-3 bottom-3 z-10 w-px -translate-x-1/2 bg-[#2F73F0]/35" />
                         ) : null}
 
                         {phaseIndex === 1 ? (
-                          <div className="absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded-full border border-[#CFE0FF] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F73F0] shadow-sm">
+                          <div className="absolute left-[58%] top-2 z-20 -translate-x-1/2 rounded-full border border-[#CFE0FF] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F73F0] shadow-sm">
                             Today
                           </div>
                         ) : null}
@@ -1381,6 +1407,220 @@ function TimelineSection({ plan }: { plan: Plan }) {
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TrendChart() {
+  const maxValue = Math.max(
+    ...trendData.flatMap((d) => [d.email, d.web, d.media, d.search, d.messaging])
+  );
+  const width = 560;
+  const height = 240;
+  const paddingX = 24;
+  const paddingY = 24;
+  const innerW = width - paddingX * 2;
+  const innerH = height - paddingY * 2;
+
+  const buildPath = (values: number[]) =>
+    values
+      .map((value, index) => {
+        const x = paddingX + (index / (values.length - 1)) * innerW;
+        const y = paddingY + innerH - (value / maxValue) * innerH;
+        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      })
+      .join(" ");
+
+  return (
+    <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-[18px] font-semibold text-[#1D263B]">
+            Channel Performance Trend
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Engagement performance trajectory across key channels.
+          </p>
+        </div>
+        <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-3 py-1 text-xs font-medium text-[#2F73F0]">
+          Last 6 months
+        </div>
+      </div>
+
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[240px] w-full">
+        {[0.25, 0.5, 0.75, 1].map((fraction) => {
+          const y = paddingY + innerH - innerH * fraction;
+          return (
+            <line
+              key={fraction}
+              x1={paddingX}
+              y1={y}
+              x2={width - paddingX}
+              y2={y}
+              stroke="#E7EDF7"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        <path d={buildPath(trendData.map((d) => d.media))} fill="none" stroke="#3E7BF0" strokeWidth="3" />
+        <path d={buildPath(trendData.map((d) => d.email))} fill="none" stroke="#4D95ED" strokeWidth="3" />
+        <path d={buildPath(trendData.map((d) => d.web))} fill="none" stroke="#72D6C9" strokeWidth="3" />
+        <path d={buildPath(trendData.map((d) => d.search))} fill="none" stroke="#9B8AFB" strokeWidth="3" />
+        <path d={buildPath(trendData.map((d) => d.messaging))} fill="none" stroke="#F0B763" strokeWidth="3" />
+
+        {trendData.map((d, index) => {
+          const x = paddingX + (index / (trendData.length - 1)) * innerW;
+          return (
+            <g key={d.label}>
+              <text
+                x={x}
+                y={height - 6}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#94A3B8"
+              >
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        {[
+          ["Paid Media", "#3E7BF0"],
+          ["Email", "#4D95ED"],
+          ["Web", "#72D6C9"],
+          ["Search", "#9B8AFB"],
+          ["Messaging", "#F0B763"],
+        ].map(([label, color]) => (
+          <div
+            key={label}
+            className="flex items-center gap-2 rounded-full border border-[#E2E8F3] bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EfficiencyChart() {
+  const maxBudget = Math.max(...efficiencyData.map((d) => d.budget));
+  const maxEngagement = Math.max(...efficiencyData.map((d) => d.engagement));
+
+  return (
+    <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-[18px] font-semibold text-[#1D263B]">
+            Budget vs Engagement Efficiency
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Relative spend and engagement contribution by channel.
+          </p>
+        </div>
+        <span className="text-sm text-slate-400">Current recommendation</span>
+      </div>
+
+      <div className="space-y-4">
+        {efficiencyData.map((item, index) => (
+          <div key={item.channel}>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-medium text-slate-700">{item.channel}</span>
+              <span className="text-slate-500">
+                {item.budget}K CHF · {item.engagement}% engagement
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="h-3 overflow-hidden rounded-full bg-[#EAF0FA]">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${(item.budget / maxBudget) * 100}%`,
+                    backgroundColor: budgetColors[index % budgetColors.length],
+                  }}
+                />
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-[#F3F6FB]">
+                <div
+                  className="h-full rounded-full bg-[#1D263B]"
+                  style={{ width: `${(item.engagement / maxEngagement) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <div className="rounded-full border border-[#E2E8F3] bg-white px-3 py-2 text-sm text-slate-700">
+          Color bar = Budget
+        </div>
+        <div className="rounded-full border border-[#E2E8F3] bg-white px-3 py-2 text-sm text-slate-700">
+          Dark bar = Engagement
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarketComparisonTable() {
+  return (
+    <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-[18px] font-semibold text-[#1D263B]">
+            Market Comparison Snapshot
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Current relative performance across selected priority markets.
+          </p>
+        </div>
+        <span className="text-sm text-slate-400">Priority markets</span>
+      </div>
+
+      <div className="overflow-hidden rounded-[18px] border border-[#E2E8F3] bg-white">
+        <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr] bg-[#F8FAFE] px-4 py-3 text-sm font-semibold text-slate-600">
+          <div>Market</div>
+          <div>Reach</div>
+          <div>Engagement</div>
+          <div>ROI</div>
+          <div>Status</div>
+        </div>
+
+        {marketData.map((item) => (
+          <div
+            key={item.market}
+            className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1fr] items-center border-t border-[#E2E8F3] px-4 py-4 text-sm"
+          >
+            <div className="font-medium text-[#1D263B]">{item.market}</div>
+            <div className="text-slate-600">{item.reach}</div>
+            <div className="text-slate-600">{item.engagement}</div>
+            <div className="text-slate-600">{item.roi}</div>
+            <div>
+              <span
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                  item.status === "Leading"
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : item.status === "Strong"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : item.status === "Stable"
+                    ? "border-slate-200 bg-slate-50 text-slate-600"
+                    : "border-amber-200 bg-amber-50 text-amber-700"
+                }`}
+              >
+                {item.status}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1907,6 +2147,11 @@ export default function Home() {
                     </div>
                   </div>
 
+                  <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+                    <TrendChart />
+                    <EfficiencyChart />
+                  </div>
+
                   <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                     <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
                       <div className="mb-5 flex items-center justify-between">
@@ -2030,6 +2275,8 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+
+                  <MarketComparisonTable />
 
                   <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
                     <div className="mb-5 flex items-center justify-between">
