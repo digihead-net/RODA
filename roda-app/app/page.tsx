@@ -334,6 +334,13 @@ const budgetColors = [
   "#72D6C9",
 ];
 
+type TimelineLaneItem = {
+  id: string;
+  lane: "Email" | "Web" | "Media" | "Search" | "Messaging";
+  phase: "Pre" | "During" | "Post";
+  title: string;
+};
+
 function RocheLogo() {
   return (
     <svg width="86" height="44" viewBox="0 0 86 44" fill="none" aria-hidden="true">
@@ -1143,7 +1150,97 @@ function CopilotPanel({
   );
 }
 
+function classifyLane(item: string): TimelineLaneItem["lane"] {
+  const lower = item.toLowerCase();
+  if (lower.includes("email")) return "Email";
+  if (
+    lower.includes("web") ||
+    lower.includes("hub") ||
+    lower.includes("landing page") ||
+    lower.includes("content hub")
+  ) {
+    return "Web";
+  }
+  if (
+    lower.includes("paid media") ||
+    lower.includes("media") ||
+    lower.includes("linkedin") ||
+    lower.includes("programmatic") ||
+    lower.includes("retargeting")
+  ) {
+    return "Media";
+  }
+  if (lower.includes("search") || lower.includes("geo")) return "Search";
+  if (lower.includes("whatsapp") || lower.includes("messaging")) return "Messaging";
+  return "Web";
+}
+
+function buildTimelineItems(plan: Plan): TimelineLaneItem[] {
+  const items: TimelineLaneItem[] = [];
+
+  plan.pre.forEach((item, idx) => {
+    items.push({
+      id: `pre-${idx}`,
+      lane: classifyLane(item),
+      phase: "Pre",
+      title: item,
+    });
+  });
+
+  plan.during.forEach((item, idx) => {
+    items.push({
+      id: `during-${idx}`,
+      lane: classifyLane(item),
+      phase: "During",
+      title: item,
+    });
+  });
+
+  plan.post.forEach((item, idx) => {
+    items.push({
+      id: `post-${idx}`,
+      lane: classifyLane(item),
+      phase: "Post",
+      title: item,
+    });
+  });
+
+  return items;
+}
+
+function laneAccent(lane: TimelineLaneItem["lane"]) {
+  if (lane === "Email") return "bg-[#2F73F0]";
+  if (lane === "Web") return "bg-[#72D6C9]";
+  if (lane === "Media") return "bg-[#F0B763]";
+  if (lane === "Search") return "bg-[#9B8AFB]";
+  return "bg-[#4D95ED]";
+}
+
+function laneDotBorder(lane: TimelineLaneItem["lane"]) {
+  if (lane === "Email") return "border-[#2F73F0]";
+  if (lane === "Web") return "border-[#72D6C9]";
+  if (lane === "Media") return "border-[#F0B763]";
+  if (lane === "Search") return "border-[#9B8AFB]";
+  return "border-[#4D95ED]";
+}
+
 function TimelineSection({ plan }: { plan: Plan }) {
+  const lanes: TimelineLaneItem["lane"][] = [
+    "Email",
+    "Web",
+    "Media",
+    "Search",
+    "Messaging",
+  ];
+
+  const phaseMeta = [
+    { key: "Pre" as const, label: "Pre", sublabel: "Weeks 1–2" },
+    { key: "During" as const, label: "Launch", sublabel: "Weeks 3–5" },
+    { key: "Post" as const, label: "Post", sublabel: "Weeks 6–8" },
+  ];
+
+  const items = useMemo(() => buildTimelineItems(plan), [plan]);
+
   return (
     <div className="mt-6 rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-center gap-4">
@@ -1151,38 +1248,96 @@ function TimelineSection({ plan }: { plan: Plan }) {
         <div className="h-px flex-1 bg-[#E3E8F2]" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {[
-          { title: "Pre", month: "Weeks 1–2", items: plan.pre },
-          { title: "During", month: "Weeks 3–5", items: plan.during },
-          { title: "Post", month: "Weeks 6–8", items: plan.post },
-        ].map((phase, index) => (
-          <div
-            key={phase.title}
-            className="relative rounded-[22px] border border-[#E1E7F2] bg-[#FCFDFF] p-5"
-          >
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2F73F0] text-sm font-semibold text-white">
-                {index + 1}
-              </div>
-              <div>
-                <h4 className="text-[18px] font-semibold">{phase.title}</h4>
-                <p className="text-sm text-slate-500">{phase.month}</p>
-              </div>
-            </div>
+      <div className="rounded-[22px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+        <div className="grid grid-cols-[120px_1fr] gap-4">
+          <div />
 
-            <div className="space-y-3">
-              {phase.items.map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-600"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
+          <div className="grid grid-cols-3 gap-4">
+            {phaseMeta.map((phase) => (
+              <div
+                key={phase.key}
+                className="rounded-[18px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] px-4 py-3"
+              >
+                <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
+                  {phase.label}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">{phase.sublabel}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {lanes.map((lane) => {
+            const laneItems = items.filter((item) => item.lane === lane);
+
+            return (
+              <div
+                key={lane}
+                className="grid grid-cols-[120px_1fr] gap-4"
+              >
+                <div className="flex items-center">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-3 w-3 rounded-full ${laneAccent(lane)}`} />
+                    <span className="text-[15px] font-semibold text-[#1D263B]">
+                      {lane}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  {phaseMeta.map((phase) => {
+                    const phaseItems = laneItems.filter(
+                      (item) => item.phase === phase.key
+                    );
+
+                    return (
+                      <div
+                        key={`${lane}-${phase.key}`}
+                        className="relative min-h-[108px] rounded-[18px] border border-[#E2E8F3] bg-white px-4 py-4"
+                      >
+                        <div className="absolute left-0 right-0 top-1/2 z-0 h-px -translate-y-1/2 bg-[#E7EDF7]" />
+
+                        {phaseItems.length === 0 ? (
+                          <div className="relative z-10 flex h-full items-center justify-center">
+                            <span
+                              className={`h-4 w-4 rounded-full border-[3px] bg-white ${laneDotBorder(
+                                lane
+                              )}`}
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative z-10 flex h-full flex-wrap items-start gap-3">
+                            {phaseItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="min-w-[150px] max-w-full flex-1 rounded-2xl border border-[#DDE6F3] bg-[#F9FBFF] px-3 py-3 shadow-[0_6px_16px_rgba(36,99,232,0.05)]"
+                              >
+                                <div className="mb-2 flex items-center gap-2">
+                                  <span
+                                    className={`h-3 w-3 rounded-full border-[3px] bg-white ${laneDotBorder(
+                                      lane
+                                    )}`}
+                                  />
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                    Touchpoint
+                                  </span>
+                                </div>
+                                <p className="text-[13px] leading-6 text-slate-700">
+                                  {item.title}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
