@@ -548,38 +548,54 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
   }, [items, total]);
 
   return (
-    <div className="flex items-center gap-8">
-      <div
-        className="relative flex h-[190px] w-[190px] shrink-0 items-center justify-center rounded-full"
-        style={{ background: gradientStops }}
-      >
-        <div className="absolute inset-[34px] rounded-full bg-white shadow-inner" />
-        <div className="relative z-10 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Budget
-          </p>
-          <p className="mt-1 text-[26px] font-semibold text-[#1D263B]">
-            {formatCurrencyCompact(total)}
-          </p>
-          <p className="text-xs text-slate-500">CHF</p>
+    <div className="grid gap-8 xl:grid-cols-[360px_minmax(0,1fr)] xl:items-center">
+      <div className="flex justify-center">
+        <div
+          className="relative flex h-[280px] w-[280px] items-center justify-center rounded-full"
+          style={{ background: gradientStops }}
+        >
+          <div className="absolute inset-[56px] rounded-full bg-white shadow-inner" />
+          <div className="relative z-10 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Budget
+            </p>
+            <p className="mt-2 text-[38px] font-semibold leading-none text-[#1D263B]">
+              {formatCurrencyCompact(total)}
+            </p>
+            <p className="mt-2 text-[14px] text-slate-500">CHF</p>
+          </div>
         </div>
       </div>
 
-      <div className="min-w-[220px] space-y-3 text-[15px] text-slate-700">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
         {items.map((item, index) => {
           const share = total > 0 ? Math.round((item.amount / total) * 100) : 0;
           const color = budgetColors[index % budgetColors.length];
 
           return (
-            <div key={item.channel} className="flex items-center justify-between gap-8">
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span>{item.channel}</span>
+            <div
+              key={item.channel}
+              className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-medium text-slate-700">
+                      {item.channel}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {formatCurrencyCompact(item.amount)} CHF
+                    </p>
+                  </div>
+                </div>
+                <span className="shrink-0 text-[15px] font-semibold text-[#1D263B]">
+                  {share}%
+                </span>
               </div>
-              <span className="font-medium">{share}%</span>
             </div>
           );
         })}
@@ -1188,7 +1204,7 @@ function HighlightPill({ children }: { children: React.ReactNode }) {
 
 function AIBasisPill({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-full border border-[#D6E3FF] bg-white px-3 py-2 text-sm text-[#3A4A67] shadow-[0_4px_10px_rgba(36,99,232,0.05)]">
+    <div className="rounded-full border border-[#D6E3FF] bg-white px-4 py-2.5 text-[14px] text-[#3A4A67] shadow-[0_4px_10px_rgba(36,99,232,0.05)]">
       {children}
     </div>
   );
@@ -1371,8 +1387,8 @@ export default function Home() {
                       </div>
 
                       <div className="mb-6 rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
-                        <div className="grid gap-5 xl:grid-cols-[1.45fr_0.75fr] xl:items-center">
-                          <div>
+                        <div className="grid gap-5 xl:grid-cols-[1.45fr_0.78fr] xl:items-center">
+                          <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
                               Recommended path
                             </p>
@@ -1384,20 +1400,20 @@ export default function Home() {
                             </p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                          <div className="grid grid-cols-2 gap-3 self-start xl:self-center">
+                            <div className="min-w-0 rounded-2xl bg-white px-4 py-4 shadow-sm">
+                              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                 Confidence
                               </p>
-                              <p className="mt-2 text-[20px] font-semibold text-[#2463E8]">
+                              <p className="mt-2 text-[18px] font-semibold text-[#2463E8]">
                                 {plan.confidence}
                               </p>
                             </div>
-                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">
+                            <div className="min-w-0 rounded-2xl bg-white px-4 py-4 shadow-sm">
+                              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                 Maturity
                               </p>
-                              <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
+                              <p className="mt-2 truncate text-[18px] font-semibold text-[#1D263B]">
                                 {plan.maturity}
                               </p>
                             </div>
@@ -1451,51 +1467,51 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_1.25fr]">
-                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <div className="flex items-center justify-between">
-                            <h5 className="text-[18px] font-semibold">Budget Allocation</h5>
-                            <span className="text-sm text-slate-400">
-                              {formatCurrencyCompact(totalBudget)} CHF
-                            </span>
-                          </div>
-
-                          <div className="mt-4">
-                            <BudgetDonut items={plan.budgetAllocation} />
-                          </div>
+                      <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <h5 className="text-[18px] font-semibold">Budget Allocation</h5>
+                          <span className="text-sm text-slate-400">
+                            {formatCurrencyCompact(totalBudget)} CHF
+                          </span>
                         </div>
 
-                        <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <div className="flex items-center justify-between">
-                            <h5 className="text-[18px] font-semibold">
-                              Recommended Channel Mix
-                            </h5>
-                            <span className="text-sm text-slate-400">
-                              {plan.channelMix.length} elements
-                            </span>
-                          </div>
-
-                          <div className="mt-4 space-y-3">
-                            {plan.channelMix.map((item) => (
-                              <div
-                                key={item}
-                                className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-700"
-                              >
-                                {item}
-                              </div>
-                            ))}
-                          </div>
+                        <div className="mt-6">
+                          <BudgetDonut items={plan.budgetAllocation} />
                         </div>
                       </div>
 
                       <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex items-start justify-between gap-4">
+                          <h5 className="max-w-[320px] text-[18px] font-semibold leading-7">
+                            Recommended Channel Mix
+                          </h5>
+                          <span className="shrink-0 text-sm text-slate-400">
+                            {plan.channelMix.length} elements
+                          </span>
+                        </div>
+
+                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          {plan.channelMix.map((item) => (
+                            <div
+                              key={item}
+                              className="flex min-h-[96px] items-start rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4 text-[14px] leading-7 text-slate-700"
+                            >
+                              {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                        <div className="grid gap-5 xl:grid-cols-[0.34fr_0.66fr] xl:items-start">
                           <div>
                             <h5 className="text-[18px] font-semibold">AI rationale</h5>
-                            <p className="mt-1 text-sm text-slate-400">Evidence-based logic</p>
+                            <p className="mt-2 text-sm text-slate-400">
+                              Evidence-based logic
+                            </p>
                           </div>
 
-                          <div className="flex flex-wrap gap-3 lg:justify-end">
+                          <div className="flex flex-wrap gap-3">
                             <AIBasisPill>Germany launch fit</AIBasisPill>
                             <AIBasisPill>High HCP engagement potential</AIBasisPill>
                             <AIBasisPill>Strong continuity across journey</AIBasisPill>
@@ -1504,14 +1520,19 @@ export default function Home() {
                         </div>
 
                         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                          <ul className="space-y-3 text-[15px] leading-6 text-slate-600">
-                            <li>• Germany launch campaigns perform best with strong paid media bursts</li>
-                            <li>• EMMA multi-touch journeys increase HCP engagement</li>
-                          </ul>
-                          <ul className="space-y-3 text-[15px] leading-6 text-slate-600">
-                            <li>• WhatsApp outbound improves congress attendance and continuity</li>
-                            <li>• Search visibility drives discoverability and evidence traffic</li>
-                          </ul>
+                          {[
+                            "Germany launch campaigns perform best with strong paid media bursts",
+                            "EMMA multi-touch journeys increase HCP engagement",
+                            "WhatsApp outbound improves congress attendance and continuity",
+                            "Search visibility drives discoverability and evidence traffic",
+                          ].map((item) => (
+                            <div
+                              key={item}
+                              className="rounded-2xl border border-[#E2E8F3] bg-white px-5 py-4 text-[15px] leading-8 text-slate-600"
+                            >
+                              {item}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
