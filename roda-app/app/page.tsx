@@ -32,6 +32,13 @@ type TrackerItem = {
 type ScenarioKey = "recommended" | "balanced" | "efficiency";
 type TabKey = "planner" | "execution" | "performance";
 
+type TimelineLaneItem = {
+  id: string;
+  lane: "Email" | "Web" | "Media" | "Search" | "Messaging";
+  phase: "Pre" | "During" | "Post";
+  title: string;
+};
+
 const DEMO_PASSWORD = "rode2026";
 
 const recommendedPlan: Plan = {
@@ -334,13 +341,6 @@ const budgetColors = [
   "#72D6C9",
 ];
 
-type TimelineLaneItem = {
-  id: string;
-  lane: "Email" | "Web" | "Media" | "Search" | "Messaging";
-  phase: "Pre" | "During" | "Post";
-  title: string;
-};
-
 const trendData = [
   { label: "Jan", email: 14, web: 11, media: 16, search: 9, messaging: 8 },
   { label: "Feb", email: 16, web: 12, media: 18, search: 10, messaging: 8 },
@@ -359,10 +359,40 @@ const efficiencyData = [
 ];
 
 const marketData = [
-  { market: "Germany", reach: "240K", engagement: "27%", roi: "4.3x", status: "Leading" },
-  { market: "UK", reach: "182K", engagement: "22%", roi: "3.7x", status: "Strong" },
-  { market: "Italy", reach: "151K", engagement: "19%", roi: "3.2x", status: "Stable" },
-  { market: "Spain", reach: "132K", engagement: "17%", roi: "2.9x", status: "Watch" },
+  {
+    market: "Germany",
+    reach: "240K",
+    engagement: "27%",
+    roi: "4.3x",
+    status: "Leading",
+  },
+  {
+    market: "UK",
+    reach: "182K",
+    engagement: "22%",
+    roi: "3.7x",
+    status: "Strong",
+  },
+  {
+    market: "Italy",
+    reach: "151K",
+    engagement: "19%",
+    roi: "3.2x",
+    status: "Stable",
+  },
+  {
+    market: "Spain",
+    reach: "132K",
+    engagement: "17%",
+    roi: "2.9x",
+    status: "Watch",
+  },
+];
+
+const plannerPromptSuggestions = [
+  "Launch a new oncology product in Germany with strong HCP engagement",
+  "Create a congress activation strategy with media, web and messaging",
+  "Build an always-on HCP engagement plan with better ROI",
 ];
 
 function RocheLogo() {
@@ -407,10 +437,8 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
         <div className="mb-6 flex items-center gap-4">
           <RocheLogo />
           <div>
-            <p className="text-sm font-semibold text-[#2463E8]">RODE</p>
-            <p className="text-xs text-slate-500">
-              Roche Omnichannel Decision &amp; Execution
-            </p>
+            <p className="text-sm font-semibold text-[#2463E8]">ROC</p>
+            <p className="text-xs text-slate-500">Roche Omnichannel Copilot</p>
           </div>
         </div>
 
@@ -473,15 +501,13 @@ function SideNav({
 
       <div className="px-4 py-5">
         <div className="rounded-[18px] bg-gradient-to-br from-[#2E72EF] to-[#2463E8] p-5 text-white shadow-[0_20px_40px_rgba(36,99,232,0.22)]">
-          <div className="flex items-start gap-3">
-            <div>
-              <p className="text-[18px] font-semibold">RODE</p>
-              <p className="mt-1 text-[13px] leading-5 text-white/90">
-                Roche Omnichannel
-                <br />
-                Decision &amp; Execution
-              </p>
-            </div>
+          <div>
+            <p className="text-[18px] font-semibold">ROC</p>
+            <p className="mt-1 text-[13px] leading-5 text-white/90">
+              Roche Omnichannel
+              <br />
+              Copilot
+            </p>
           </div>
         </div>
 
@@ -915,7 +941,7 @@ function ExecuteModal({
                   Briefing Sent Successfully
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  RODE has simulated dispatch of the execution brief to the relevant teams.
+                  ROC has simulated dispatch of the execution brief to the relevant teams.
                 </p>
               </div>
 
@@ -1139,7 +1165,7 @@ function CopilotPanel({
 }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(
-    "Ask RODE to improve the plan, reduce budget, rebalance channels, or generate an alternative scenario."
+    "Ask ROC to improve the plan, reduce budget, rebalance channels, or generate an alternative scenario."
   );
   const [loading, setLoading] = useState(false);
 
@@ -1165,7 +1191,7 @@ function CopilotPanel({
   return (
     <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-[18px] font-semibold">Ask RODE</h3>
+        <h3 className="text-[18px] font-semibold">Ask ROC</h3>
         <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-3 py-1 text-xs font-medium text-[#2F73F0]">
           AI Copilot
         </div>
@@ -1190,7 +1216,7 @@ function CopilotPanel({
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Ask RODE anything..."
+        placeholder="Ask ROC anything..."
         className="mt-4 min-h-[110px] w-full rounded-2xl border border-[#E2E8F3] px-4 py-3 text-sm outline-none focus:border-[#2463E8]"
       />
 
@@ -1199,7 +1225,7 @@ function CopilotPanel({
         disabled={loading}
         className="mt-4 w-full rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {loading ? "Thinking..." : "Ask RODE"}
+        {loading ? "Thinking..." : "Ask ROC"}
       </button>
 
       <div className="mt-4 rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-4">
@@ -1748,7 +1774,7 @@ export default function Home() {
 
               <div className="mt-4">
                 <div className="text-[14px] font-semibold uppercase tracking-[0.2em] text-[#2463E8]">
-                  Ask RODE
+                  Ask ROC
                 </div>
                 <h2 className="mt-2 text-[30px] font-medium text-[#1D263B]">
                   What do you want to{" "}
@@ -1756,20 +1782,44 @@ export default function Home() {
                 </h2>
               </div>
 
-              <div className="mt-8 flex items-center gap-4 rounded-[18px] border border-[#DFE5F0] bg-white px-5 py-4 shadow-sm">
-                <input
+              <div className="mt-6 rounded-[22px] border border-[#DFE5F0] bg-white p-5 shadow-sm">
+                <p className="mb-3 text-[13px] font-medium text-slate-500">
+                  Describe your campaign in natural language
+                </p>
+
+                <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="flex-1 border-none bg-transparent text-[17px] outline-none placeholder:text-slate-400"
-                  placeholder="Describe your objective"
+                  placeholder="I'm launching Product X in Germany with a 500k CHF budget and want strong HCP engagement. Help me create an activation plan."
+                  className="min-h-[120px] w-full resize-none rounded-[18px] border border-[#E2E8F3] px-4 py-3 text-[15px] text-slate-700 outline-none focus:border-[#2463E8] focus:ring-4 focus:ring-[#2463E8]/10"
                 />
-                <button
-                  onClick={handleGeneratePlan}
-                  disabled={loading}
-                  className="rounded-2xl bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-8 py-4 text-[16px] font-medium text-white shadow-[0_12px_24px_rgba(36,99,232,0.22)] disabled:opacity-60"
-                >
-                  {loading ? "Generating..." : "Generate Plan"}
-                </button>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {plannerPromptSuggestions.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      onClick={() => setPrompt(example)}
+                      className="rounded-full border border-[#E2E8F3] bg-[#FAFCFF] px-3 py-1.5 text-xs text-slate-500 transition hover:border-[#CFE0FF] hover:bg-white"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-4">
+                  <p className="text-[12px] text-slate-400">
+                    ROC will automatically interpret your input and generate a full activation plan
+                  </p>
+
+                  <button
+                    onClick={handleGeneratePlan}
+                    disabled={loading}
+                    className="rounded-2xl bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-7 py-3 text-[15px] font-medium text-white shadow-[0_12px_24px_rgba(36,99,232,0.22)] disabled:opacity-60"
+                  >
+                    {loading ? "Generating..." : "Generate Plan"}
+                  </button>
+                </div>
               </div>
 
               {error ? (
