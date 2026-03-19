@@ -567,7 +567,7 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {items.map((item, index) => {
           const share = total > 0 ? Math.round((item.amount / total) * 100) : 0;
           const color = budgetColors[index % budgetColors.length];
@@ -577,14 +577,14 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
               key={item.channel}
               className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4"
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <span
-                    className="h-3 w-3 shrink-0 rounded-full"
+                    className="mt-1 h-3 w-3 shrink-0 rounded-full"
                     style={{ backgroundColor: color }}
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-slate-700">
+                    <p className="text-[15px] font-medium leading-6 text-slate-700">
                       {item.channel}
                     </p>
                     <p className="mt-1 text-sm text-slate-400">
@@ -1387,7 +1387,7 @@ export default function Home() {
                       </div>
 
                       <div className="mb-6 rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
-                        <div className="grid gap-5 xl:grid-cols-[1.45fr_0.78fr] xl:items-center">
+                        <div className="grid gap-5 xl:grid-cols-[1.5fr_220px] xl:items-start">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
                               Recommended path
@@ -1400,20 +1400,20 @@ export default function Home() {
                             </p>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 self-start xl:self-center">
-                            <div className="min-w-0 rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                          <div className="grid gap-3 self-start">
+                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                 Confidence
                               </p>
                               <p className="mt-2 text-[18px] font-semibold text-[#2463E8]">
                                 {plan.confidence}
                               </p>
                             </div>
-                            <div className="min-w-0 rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
                                 Maturity
                               </p>
-                              <p className="mt-2 truncate text-[18px] font-semibold text-[#1D263B]">
+                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
                                 {plan.maturity}
                               </p>
                             </div>
