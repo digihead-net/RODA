@@ -534,83 +534,119 @@ function formatCurrencyCompact(amount: number) {
 function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }) {
   const total = items.reduce((sum, item) => sum + item.amount, 0);
 
-  const gradientStops = useMemo(() => {
-    if (!items.length || total === 0) {
-      return "conic-gradient(#E5ECF7 0% 100%)";
-    }
+  const segments = useMemo(() => {
+    if (!items.length || total === 0) return [];
 
     let cursor = 0;
 
-    const stops = items
-      .map((item, index) => {
-        const color = budgetColors[index % budgetColors.length];
-        const start = cursor;
-        const end = cursor + (item.amount / total) * 100;
-        cursor = end;
-        return `${color} ${start}% ${end}%`;
-      })
-      .join(",");
+    return items.map((item, index) => {
+      const color = budgetColors[index % budgetColors.length];
+      const start = cursor;
+      const end = cursor + (item.amount / total) * 100;
+      const mid = (start + end) / 2;
+      cursor = end;
 
-    return `conic-gradient(${stops})`;
+      return {
+        ...item,
+        color,
+        share: Math.round((item.amount / total) * 100),
+        mid,
+      };
+    });
   }, [items, total]);
 
+  const gradientStops = useMemo(() => {
+    if (!segments.length) {
+      return "conic-gradient(#E5ECF7 0% 100%)";
+    }
+
+    return `conic-gradient(${segments
+      .map((seg, i) => {
+        const prevEnd =
+          i === 0
+            ? 0
+            : segments.slice(0, i).reduce((acc, s) => acc + (s.amount / total) * 100, 0);
+        const end = prevEnd + (seg.amount / total) * 100;
+        return `${seg.color} ${prevEnd}% ${end}%`;
+      })
+      .join(",")})`;
+  }, [segments, total]);
+
+  const donutSize = 320;
+  const center = donutSize / 2;
+  const labelRadius = 132; // label position over slices
+
   return (
-    <div className="grid gap-8 xl:grid-cols-[360px_minmax(0,1fr)] xl:items-center">
+    <div className="grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-center">
       <div className="flex justify-center">
-        <div
-          className="relative flex h-[280px] w-[280px] items-center justify-center rounded-full"
-          style={{ background: gradientStops }}
-        >
-          <div className="absolute inset-[56px] rounded-full bg-white shadow-inner" />
-          <div className="relative z-10 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Budget
-            </p>
-            <p className="mt-2 text-[38px] font-semibold leading-none text-[#1D263B]">
-              {formatCurrencyCompact(total)}
-            </p>
-            <p className="mt-2 text-[14px] text-slate-500">CHF</p>
+        <div className="relative" style={{ width: donutSize, height: donutSize }}>
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ background: gradientStops }}
+          />
+          <div className="absolute inset-[84px] rounded-full bg-white shadow-inner" />
+
+          {segments.map((seg) => {
+            const angle = seg.mid * 3.6 - 90;
+            const rad = (angle * Math.PI) / 180;
+            const x = center + Math.cos(rad) * labelRadius;
+            const y = center + Math.sin(rad) * labelRadius;
+
+            return (
+              <div
+                key={seg.channel}
+                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/70 bg-white/88 px-2 py-1 text-center shadow-[0_6px_16px_rgba(29,38,59,0.10)] backdrop-blur-sm"
+                style={{
+                  left: x,
+                  top: y,
+                  minWidth: 72,
+                }}
+              >
+                <p className="text-[13px] font-semibold leading-4 text-[#1D263B]">
+                  {seg.share}%
+                </p>
+                <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                  {formatCurrencyCompact(seg.amount)} CHF
+                </p>
+              </div>
+            );
+          })}
+
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Budget
+              </p>
+              <p className="mt-2 text-[38px] font-semibold leading-none text-[#1D263B]">
+                {formatCurrencyCompact(total)}
+              </p>
+              <p className="mt-2 text-[14px] text-slate-500">CHF</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {items.map((item, index) => {
-          const share = total > 0 ? Math.round((item.amount / total) * 100) : 0;
-          const color = budgetColors[index % budgetColors.length];
-
-          return (
-            <div
-              key={item.channel}
-              className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className="mt-1 h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-medium leading-6 text-slate-700">
-                      {item.channel}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-400">
-                      {formatCurrencyCompact(item.amount)} CHF
-                    </p>
-                  </div>
-                </div>
-                <span className="shrink-0 text-[15px] font-semibold text-[#1D263B]">
-                  {share}%
-                </span>
-              </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {segments.map((seg) => (
+          <div
+            key={seg.channel}
+            className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4"
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: seg.color }}
+              />
+              <span className="text-[15px] font-medium text-slate-700">
+                {seg.channel}
+              </span>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-
 function ScenarioCard({
   title,
   selected = false,
@@ -1272,10 +1308,7 @@ function TimelineSection({ plan }: { plan: Plan }) {
             const laneItems = items.filter((item) => item.lane === lane);
 
             return (
-              <div
-                key={lane}
-                className="grid grid-cols-[120px_1fr] gap-4"
-              >
+              <div key={lane} className="grid grid-cols-[120px_1fr] gap-4">
                 <div className="flex items-center">
                   <div className="flex items-center gap-3">
                     <span className={`h-3 w-3 rounded-full ${laneAccent(lane)}`} />
@@ -1286,7 +1319,7 @@ function TimelineSection({ plan }: { plan: Plan }) {
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
-                  {phaseMeta.map((phase) => {
+                  {phaseMeta.map((phase, phaseIndex) => {
                     const phaseItems = laneItems.filter(
                       (item) => item.phase === phase.key
                     );
@@ -1297,6 +1330,16 @@ function TimelineSection({ plan }: { plan: Plan }) {
                         className="relative min-h-[108px] rounded-[18px] border border-[#E2E8F3] bg-white px-4 py-4"
                       >
                         <div className="absolute left-0 right-0 top-1/2 z-0 h-px -translate-y-1/2 bg-[#E7EDF7]" />
+
+                        {phaseIndex === 1 ? (
+                          <div className="absolute left-1/2 top-3 bottom-3 z-10 w-px -translate-x-1/2 bg-[#2F73F0]/35" />
+                        ) : null}
+
+                        {phaseIndex === 1 ? (
+                          <div className="absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded-full border border-[#CFE0FF] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F73F0] shadow-sm">
+                            Today
+                          </div>
+                        ) : null}
 
                         {phaseItems.length === 0 ? (
                           <div className="relative z-10 flex h-full items-center justify-center">
