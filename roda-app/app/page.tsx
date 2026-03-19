@@ -423,11 +423,7 @@ function SideNav({
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
 }) {
-  const navItems: {
-    key: TabKey;
-    label: string;
-    icon: string;
-  }[] = [
+  const navItems: { key: TabKey; label: string; icon: string }[] = [
     { key: "planner", label: "Campaign Planner", icon: "✓" },
     { key: "execution", label: "Execution Manager", icon: "▤" },
     { key: "performance", label: "Performance Intelligence", icon: "⤴" },
@@ -485,7 +481,6 @@ function SideNav({
 
         <div className="mt-8">
           <p className="px-3 text-[15px] font-medium text-slate-500">Recents</p>
-
           <div className="mt-3 space-y-3 px-2 text-[15px] text-slate-600">
             <div className="flex items-center gap-3 rounded-xl px-2 py-2">
               <span className="text-slate-400">⊕</span>
@@ -572,10 +567,7 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
           return (
             <div key={item.channel} className="flex items-center justify-between gap-8">
               <div className="flex items-center gap-3">
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
                 <span>{item.channel}</span>
               </div>
               <span className="font-medium">{share}%</span>
@@ -611,10 +603,7 @@ function ScenarioCard({
       }`}
     >
       <div className="flex items-start justify-between">
-        <h4 className="max-w-[190px] text-[18px] font-semibold leading-6">
-          {title}
-        </h4>
-
+        <h4 className="max-w-[190px] text-[18px] font-semibold leading-6">{title}</h4>
         <div
           className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
             selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"
@@ -724,9 +713,7 @@ function ExecuteModal({
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setSent(false);
-    }
+    if (!open) setSent(false);
   }, [open]);
 
   if (!open) return null;
@@ -789,9 +776,7 @@ function ExecuteModal({
               </div>
 
               <div className="rounded-[26px] border border-[#E2E8F3] bg-white p-5">
-                <h4 className="text-lg font-semibold text-[#1D263B]">
-                  Target Departments
-                </h4>
+                <h4 className="text-lg font-semibold text-[#1D263B]">Target Departments</h4>
 
                 <div className="mt-4 space-y-3">
                   {enabledServices.map((service) => (
@@ -799,9 +784,7 @@ function ExecuteModal({
                       key={service.name}
                       className="rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3"
                     >
-                      <p className="text-sm font-semibold text-[#1D263B]">
-                        {service.name}
-                      </p>
+                      <p className="text-sm font-semibold text-[#1D263B]">{service.name}</p>
                       <p className="mt-1 text-sm text-slate-500">{service.subtitle}</p>
                     </div>
                   ))}
@@ -820,9 +803,7 @@ function ExecuteModal({
           <div>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-[#2463E8]">
-                  Execution Pipeline
-                </p>
+                <p className="text-sm font-semibold text-[#2463E8]">Execution Pipeline</p>
                 <h3 className="mt-1 text-3xl font-semibold text-[#1D263B]">
                   Briefing Sent Successfully
                 </h3>
@@ -1359,9 +1340,7 @@ export default function Home() {
                   <div className="mt-6 grid gap-6 xl:grid-cols-[1.55fr_0.75fr]">
                     <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
                       <div className="mb-5 flex items-center justify-between">
-                        <h3 className="text-[22px] font-semibold">
-                          Strategy Recommendation
-                        </h3>
+                        <h3 className="text-[22px] font-semibold">Strategy Recommendation</h3>
                         <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
                           AI Recommended ✓
                         </div>
@@ -1402,58 +1381,54 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                        <div className="space-y-5">
-                          <div>
-                            <p className="text-[16px] leading-8 text-slate-600">
-                              {plan.packageDescription}
+                      <div className="space-y-6">
+                        <div>
+                          <p className="text-[16px] leading-8 text-slate-600">
+                            {plan.packageDescription}
+                          </p>
+
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            <HighlightPill>
+                              <span className="text-slate-500">Services:</span>{" "}
+                              <span className="font-semibold">{serviceCount}</span>
+                            </HighlightPill>
+                            <HighlightPill>
+                              <span className="text-slate-500">Budget:</span>{" "}
+                              <span className="font-semibold">
+                                {formatCurrencyCompact(totalBudget)} CHF
+                              </span>
+                            </HighlightPill>
+                            <HighlightPill>
+                              <span className="text-slate-500">Reach:</span>{" "}
+                              <span className="font-semibold">{plan.projectedReach}</span>
+                            </HighlightPill>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                            <p className="text-sm text-slate-500">Projected reach</p>
+                            <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                              {plan.projectedReach}
                             </p>
-
-                            <div className="mt-4 flex flex-wrap gap-3">
-                              <HighlightPill>
-                                <span className="text-slate-500">Services:</span>{" "}
-                                <span className="font-semibold">{serviceCount}</span>
-                              </HighlightPill>
-                              <HighlightPill>
-                                <span className="text-slate-500">Budget:</span>{" "}
-                                <span className="font-semibold">
-                                  {formatCurrencyCompact(totalBudget)} CHF
-                                </span>
-                              </HighlightPill>
-                              <HighlightPill>
-                                <span className="text-slate-500">Reach:</span>{" "}
-                                <span className="font-semibold">
-                                  {plan.projectedReach}
-                                </span>
-                              </HighlightPill>
-                            </div>
                           </div>
 
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                              <p className="text-sm text-slate-500">Projected reach</p>
-                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                                {plan.projectedReach}
-                              </p>
-                            </div>
-
-                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                              <p className="text-sm text-slate-500">
-                                Expected engagement
-                              </p>
-                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                                {plan.projectedEngagement}
-                              </p>
-                            </div>
-
-                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                              <p className="text-sm text-slate-500">Estimated ROI</p>
-                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                                {plan.projectedRoi}
-                              </p>
-                            </div>
+                          <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                            <p className="text-sm text-slate-500">Expected engagement</p>
+                            <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                              {plan.projectedEngagement}
+                            </p>
                           </div>
 
+                          <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                            <p className="text-sm text-slate-500">Estimated ROI</p>
+                            <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                              {plan.projectedRoi}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
                           <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
                             <div className="flex items-center justify-between">
                               <h5 className="text-[18px] font-semibold">AI rationale</h5>
@@ -1470,44 +1445,38 @@ export default function Home() {
                             </div>
 
                             <ul className="mt-4 space-y-3 text-[15px] leading-6 text-slate-600">
-                              <li>
-                                • Germany launch campaigns perform best with strong paid media bursts
-                              </li>
+                              <li>• Germany launch campaigns perform best with strong paid media bursts</li>
                               <li>• EMMA multi-touch journeys increase HCP engagement</li>
-                              <li>
-                                • WhatsApp outbound improves congress attendance and continuity
-                              </li>
-                              <li>
-                                • Search visibility drives discoverability and evidence traffic
-                              </li>
+                              <li>• WhatsApp outbound improves congress attendance and continuity</li>
+                              <li>• Search visibility drives discoverability and evidence traffic</li>
                             </ul>
                           </div>
-                        </div>
 
-                        <div className="space-y-5">
-                          <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                            <BudgetDonut items={plan.budgetAllocation} />
-                          </div>
-
-                          <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                            <div className="flex items-center justify-between">
-                              <h5 className="text-[18px] font-semibold">
-                                Recommended Channel Mix
-                              </h5>
-                              <span className="text-sm text-slate-400">
-                                {plan.channelMix.length} elements
-                              </span>
+                          <div className="space-y-5">
+                            <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                              <BudgetDonut items={plan.budgetAllocation} />
                             </div>
 
-                            <div className="mt-4 space-y-3">
-                              {plan.channelMix.map((item) => (
-                                <div
-                                  key={item}
-                                  className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-700"
-                                >
-                                  {item}
-                                </div>
-                              ))}
+                            <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-[18px] font-semibold">
+                                  Recommended Channel Mix
+                                </h5>
+                                <span className="text-sm text-slate-400">
+                                  {plan.channelMix.length} elements
+                                </span>
+                              </div>
+
+                              <div className="mt-4 space-y-3">
+                                {plan.channelMix.map((item) => (
+                                  <div
+                                    key={item}
+                                    className="rounded-2xl border border-[#E2E8F3] bg-white px-4 py-3 text-[15px] text-slate-700"
+                                  >
+                                    {item}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1608,27 +1577,19 @@ export default function Home() {
                   <div className="grid gap-4 md:grid-cols-4">
                     <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
                       <p className="text-sm text-slate-500">Submitted</p>
-                      <p className="mt-2 text-3xl font-semibold">
-                        {trackerSummary.submitted}
-                      </p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.submitted}</p>
                     </div>
                     <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
                       <p className="text-sm text-slate-500">In Review</p>
-                      <p className="mt-2 text-3xl font-semibold">
-                        {trackerSummary.inReview}
-                      </p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.inReview}</p>
                     </div>
                     <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
                       <p className="text-sm text-slate-500">In Production</p>
-                      <p className="mt-2 text-3xl font-semibold">
-                        {trackerSummary.inProduction}
-                      </p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.inProduction}</p>
                     </div>
                     <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
                       <p className="text-sm text-slate-500">Ready</p>
-                      <p className="mt-2 text-3xl font-semibold">
-                        {trackerSummary.ready}
-                      </p>
+                      <p className="mt-2 text-3xl font-semibold">{trackerSummary.ready}</p>
                     </div>
                   </div>
 
@@ -1659,9 +1620,7 @@ export default function Home() {
                           key={`${item.request}-${idx}`}
                           className="grid grid-cols-[2fr_1.3fr_1fr_1fr_2fr] items-start border-t border-[#E2E8F3] bg-white px-5 py-5 text-sm"
                         >
-                          <div className="pr-4 font-medium text-[#1D263B]">
-                            {item.request}
-                          </div>
+                          <div className="pr-4 font-medium text-[#1D263B]">{item.request}</div>
                           <div className="pr-4 text-slate-600">{item.owner}</div>
                           <div className="pr-4">
                             <StatusPill status={item.status} />
@@ -1722,9 +1681,7 @@ export default function Home() {
                         </div>
 
                         <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <p className="text-sm text-slate-500">
-                            Best-performing channel mix
-                          </p>
+                          <p className="text-sm text-slate-500">Best-performing channel mix</p>
                           <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
                             Paid Media + EMMA + Web
                           </p>
@@ -1734,9 +1691,7 @@ export default function Home() {
                         </div>
 
                         <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <p className="text-sm text-slate-500">
-                            Recent campaign performance
-                          </p>
+                          <p className="text-sm text-slate-500">Recent campaign performance</p>
                           <div className="mt-4 space-y-3 text-sm text-slate-700">
                             <div className="flex items-center justify-between">
                               <span>Oncology Congress Series</span>
@@ -1780,9 +1735,7 @@ export default function Home() {
                       <div className="rounded-[20px] border border-[#DCE6F7] bg-gradient-to-br from-[#F7FAFF] to-[#EEF4FF] p-5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <p className="text-sm text-slate-500">
-                              Current adoption snapshot
-                            </p>
+                            <p className="text-sm text-slate-500">Current adoption snapshot</p>
                             <p className="mt-2 text-[24px] font-semibold text-[#1D263B]">
                               Advocacy + Preference
                             </p>
@@ -1804,25 +1757,15 @@ export default function Home() {
                         <div className="mt-5 grid gap-3 md:grid-cols-3">
                           <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
                             <p className="text-sm text-slate-500">No adoption</p>
-                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">
-                              43%
-                            </p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">43%</p>
                           </div>
                           <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                            <p className="text-sm text-slate-500">
-                              Awareness + Trial
-                            </p>
-                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">
-                              55%
-                            </p>
+                            <p className="text-sm text-slate-500">Awareness + Trial</p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">55%</p>
                           </div>
                           <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                            <p className="text-sm text-slate-500">
-                              Preference + Advocacy
-                            </p>
-                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">
-                              28%
-                            </p>
+                            <p className="text-sm text-slate-500">Preference + Advocacy</p>
+                            <p className="mt-1 text-xl font-semibold text-[#1D263B]">28%</p>
                           </div>
                         </div>
 
@@ -1838,37 +1781,20 @@ export default function Home() {
 
                   <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
                     <div className="mb-5 flex items-center justify-between">
-                      <h3 className="text-[22px] font-semibold">
-                        Adoption Ladder Overview
-                      </h3>
+                      <h3 className="text-[22px] font-semibold">Adoption Ladder Overview</h3>
                       <span className="text-sm text-slate-400">Connected summary</span>
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-5">
-                      <AdoptionLevelCard
-                        level="0"
-                        title="No adoption"
-                        subtitle="Non-user"
-                        share="43%"
-                      />
-                      <AdoptionLevelCard
-                        level="1"
-                        title="Awareness"
-                        subtitle="Low adoption"
-                        share="31%"
-                      />
+                      <AdoptionLevelCard level="0" title="No adoption" subtitle="Non-user" share="43%" />
+                      <AdoptionLevelCard level="1" title="Awareness" subtitle="Low adoption" share="31%" />
                       <AdoptionLevelCard
                         level="2"
                         title="Consideration"
                         subtitle="Medium-low adoption"
                         share="11%"
                       />
-                      <AdoptionLevelCard
-                        level="3"
-                        title="Trial"
-                        subtitle="Medium adoption"
-                        share="24%"
-                      />
+                      <AdoptionLevelCard level="3" title="Trial" subtitle="Medium adoption" share="24%" />
                       <AdoptionLevelCard
                         level="4-5"
                         title="Preference / Advocacy"
