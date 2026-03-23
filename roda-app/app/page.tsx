@@ -27,19 +27,25 @@ type TrackerItem = {
   status: "Submitted" | "In Review" | "In Production" | "Ready";
   dueDate: string;
   lastUpdate: string;
+  openDays: number;
 };
 
 type ScenarioKey = "recommended" | "balanced" | "efficiency";
 type TabKey = "planner" | "execution" | "performance";
+type ExecutionFilter = "all" | "In Production" | "Ready" | "In Review" | "Submitted";
 
 type TimelineLaneItem = {
   id: string;
   lane: "Email" | "Web" | "Media" | "Search" | "Messaging";
   phase: "Pre" | "During" | "Post";
   title: string;
+  intensity: "low" | "medium" | "high";
+  weekLabel: string;
+  shortLabel: string;
 };
 
 const DEMO_PASSWORD = "rode2026";
+const STORAGE_KEY = "roc-demo-state-v2";
 
 const recommendedPlan: Plan = {
   title: "Welcome, Rachel",
@@ -293,6 +299,7 @@ const trackerItems: TrackerItem[] = [
     status: "Ready",
     dueDate: "Mar 12, 2026",
     lastUpdate: "Assets approved and ready for deployment.",
+    openDays: 2,
   },
   {
     request: "Campaign hub page build",
@@ -300,6 +307,7 @@ const trackerItems: TrackerItem[] = [
     status: "In Production",
     dueDate: "Mar 18, 2026",
     lastUpdate: "Page template configured and content modules in progress.",
+    openDays: 6,
   },
   {
     request: "Programmatic media setup",
@@ -307,6 +315,7 @@ const trackerItems: TrackerItem[] = [
     status: "In Review",
     dueDate: "Mar 15, 2026",
     lastUpdate: "Audience and placement strategy under review.",
+    openDays: 3,
   },
   {
     request: "Search & GEO optimization request",
@@ -314,6 +323,7 @@ const trackerItems: TrackerItem[] = [
     status: "Submitted",
     dueDate: "Mar 20, 2026",
     lastUpdate: "Intake submitted and awaiting prioritization.",
+    openDays: 1,
   },
   {
     request: "WhatsApp outbound reminder flow",
@@ -321,6 +331,7 @@ const trackerItems: TrackerItem[] = [
     status: "In Production",
     dueDate: "Mar 16, 2026",
     lastUpdate: "Flow logic finalized; localization underway.",
+    openDays: 4,
   },
   {
     request: "Launch content adaptation pack",
@@ -328,6 +339,7 @@ const trackerItems: TrackerItem[] = [
     status: "In Review",
     dueDate: "Mar 14, 2026",
     lastUpdate: "Draft assets shared for review and comments.",
+    openDays: 5,
   },
 ];
 
@@ -393,6 +405,19 @@ const plannerPromptSuggestions = [
   "Launch a new oncology product in Germany with strong HCP engagement",
   "Create a congress activation strategy with media, web and messaging",
   "Build an always-on HCP engagement plan with better ROI",
+];
+
+const promptRefinementSuggestions = [
+  "increase HCP focus",
+  "prioritize efficiency",
+  "add congress support",
+];
+
+const followUpQuestions = [
+  "Do you want to optimize for ROI?",
+  "Should we reduce media spend?",
+  "Would you like stronger congress support?",
+  "Should ROC increase HCP continuity touchpoints?",
 ];
 
 function RocheLogo() {
@@ -581,6 +606,38 @@ function formatCurrencyCompact(amount: number) {
   }).format(amount);
 }
 
+function getDecisionTags(plan: Plan) {
+  const tags = ["High data match"];
+
+  if (plan.packageName.toLowerCase().includes("execution")) tags.push("Strong launch fit");
+  if (plan.packageName.toLowerCase().includes("balanced")) tags.push("Balanced mix");
+  if (plan.packageName.toLowerCase().includes("efficiency")) tags.push("Efficiency oriented");
+  if (plan.channelMix.some((item) => item.toLowerCase().includes("whatsapp"))) {
+    tags.push("Continuity support");
+  }
+
+  return tags.slice(0, 3);
+}
+
+function getContextAwarenessText(prompt: string) {
+  const lower = prompt.toLowerCase();
+  const bits: string[] = [];
+
+  if (lower.includes("launch")) bits.push("launch objective");
+  if (lower.includes("hcp")) bits.push("HCP focus");
+  if (lower.includes("budget") || lower.includes("chf") || /\d/.test(lower)) {
+    bits.push("budget level");
+  }
+  if (lower.includes("congress")) bits.push("congress context");
+  if (lower.includes("germany")) bits.push("market context");
+
+  if (!bits.length) {
+    return "Based on campaign objective and channel mix potential";
+  }
+
+  return `Based on ${bits.join(" and ")}`;
+}
+
 function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }) {
   const total = items.reduce((sum, item) => sum + item.amount, 0);
 
@@ -632,7 +689,7 @@ function BudgetDonut({ items }: { items: { channel: string; amount: number }[] }
       <div className="flex justify-center">
         <div className="relative" style={{ width: donutSize, height: donutSize }}>
           <div
-            className="absolute inset-0 rounded-full"
+            className="absolute inset-0 rounded-full transition-all duration-500"
             style={{ background: gradientStops }}
           />
           <div className="absolute inset-[84px] rounded-full bg-white shadow-inner" />
@@ -716,10 +773,10 @@ function ScenarioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[24px] border p-5 text-left transition-all duration-200 ${
+      className={`w-full rounded-[24px] border p-5 text-left transition-all duration-300 ${
         selected
           ? "border-[#2E72EF] bg-gradient-to-br from-[#2F73F0] to-[#2463E8] text-white shadow-[0_20px_40px_rgba(36,99,232,0.28)]"
-          : "border-[#E2E8F3] bg-white text-slate-800 hover:shadow-md"
+          : "border-[#E2E8F3] bg-white text-slate-800 hover:-translate-y-[1px] hover:shadow-md"
       }`}
     >
       <div className="flex items-start justify-between">
@@ -822,6 +879,27 @@ function StatusPill({ status }: { status: TrackerItem["status"] }) {
       className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles}`}
     >
       {status}
+    </span>
+  );
+}
+
+function TrendPill({
+  value,
+  positive = true,
+}: {
+  value: string;
+  positive?: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        positive
+          ? "border-green-200 bg-green-50 text-green-700"
+          : "border-red-200 bg-red-50 text-red-700"
+      }`}
+    >
+      <span>{positive ? "↑" : "↓"}</span>
+      {value}
     </span>
   );
 }
@@ -1185,7 +1263,7 @@ function CopilotPanel({
       setAnswer(result.answer);
       onApply(result.updatedPlan);
       setLoading(false);
-    }, 700);
+    }, 800);
   }
 
   return (
@@ -1206,7 +1284,7 @@ function CopilotPanel({
           <button
             key={item}
             onClick={() => setQuestion(item)}
-            className="w-full rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3 text-left text-sm text-slate-600 hover:border-[#CFE0FF]"
+            className="w-full rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-3 text-left text-sm text-slate-600 transition hover:border-[#CFE0FF] hover:bg-white"
           >
             {item}
           </button>
@@ -1225,14 +1303,32 @@ function CopilotPanel({
         disabled={loading}
         className="mt-4 w-full rounded-full bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {loading ? "Thinking..." : "Ask ROC"}
+        {loading ? "Updating recommendation..." : "Ask ROC"}
       </button>
 
-      <div className="mt-4 rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-4">
+      <div className="mt-4 rounded-2xl border border-[#E2E8F3] bg-[#FAFCFF] px-4 py-4 transition-all duration-300">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
           Copilot Response
         </p>
         <p className="mt-3 text-sm leading-6 text-slate-700">{answer}</p>
+
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Suggested follow-up
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {followUpQuestions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setQuestion(item)}
+                className="rounded-full border border-[#DCE6F7] bg-white px-3 py-2 text-xs text-slate-600 transition hover:border-[#CFE0FF] hover:text-[#2463E8]"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1263,33 +1359,107 @@ function classifyLane(item: string): TimelineLaneItem["lane"] {
   return "Web";
 }
 
+function classifyIntensity(item: string): TimelineLaneItem["intensity"] {
+  const lower = item.toLowerCase();
+  if (
+    lower.includes("launch") ||
+    lower.includes("burst") ||
+    lower.includes("go-live") ||
+    lower.includes("amplification")
+  ) {
+    return "high";
+  }
+  if (
+    lower.includes("follow-up") ||
+    lower.includes("reminder") ||
+    lower.includes("retargeting") ||
+    lower.includes("push")
+  ) {
+    return "medium";
+  }
+  return "low";
+}
+
+function getWeekLabel(phase: TimelineLaneItem["phase"], index: number) {
+  if (phase === "Pre") return index % 2 === 0 ? "Week 1" : "Week 2";
+  if (phase === "During") return index < 2 ? "Week 3" : "Week 4";
+  return index < 2 ? "Week 6" : "Week 7";
+}
+
+function buildShortLabel(
+  lane: TimelineLaneItem["lane"],
+  phase: TimelineLaneItem["phase"],
+  title: string,
+  count: number
+) {
+  const prefix =
+    lane === "Email"
+      ? "Email"
+      : lane === "Web"
+      ? "Web"
+      : lane === "Media"
+      ? "Media"
+      : lane === "Search"
+      ? "Search"
+      : "Msg";
+
+  if (title.toLowerCase().includes("reminder")) return `${prefix} reminder`;
+  if (title.toLowerCase().includes("launch")) return `${prefix} launch`;
+  if (title.toLowerCase().includes("hub")) return `${prefix} hub`;
+  if (title.toLowerCase().includes("search")) return `${prefix} visibility`;
+
+  return `${prefix} #${count}`;
+}
+
 function buildTimelineItems(plan: Plan): TimelineLaneItem[] {
   const items: TimelineLaneItem[] = [];
+  const laneCounters: Record<TimelineLaneItem["lane"], number> = {
+    Email: 0,
+    Web: 0,
+    Media: 0,
+    Search: 0,
+    Messaging: 0,
+  };
 
   plan.pre.forEach((item, idx) => {
+    const lane = classifyLane(item);
+    laneCounters[lane] += 1;
     items.push({
       id: `pre-${idx}`,
-      lane: classifyLane(item),
+      lane,
       phase: "Pre",
       title: item,
+      intensity: classifyIntensity(item),
+      weekLabel: getWeekLabel("Pre", idx),
+      shortLabel: buildShortLabel(lane, "Pre", item, laneCounters[lane]),
     });
   });
 
   plan.during.forEach((item, idx) => {
+    const lane = classifyLane(item);
+    laneCounters[lane] += 1;
     items.push({
       id: `during-${idx}`,
-      lane: classifyLane(item),
+      lane,
       phase: "During",
       title: item,
+      intensity: classifyIntensity(item),
+      weekLabel: getWeekLabel("During", idx),
+      shortLabel: buildShortLabel(lane, "During", item, laneCounters[lane]),
     });
   });
 
   plan.post.forEach((item, idx) => {
+    const lane = classifyLane(item);
+    laneCounters[lane] += 1;
     items.push({
       id: `post-${idx}`,
-      lane: classifyLane(item),
+      lane,
       phase: "Post",
       title: item,
+      intensity: classifyIntensity(item),
+      weekLabel: getWeekLabel("Post", idx),
+      shortLabel: buildShortLabel(lane, "Post", item, laneCounters[lane]),
     });
   });
 
@@ -1310,6 +1480,43 @@ function laneDotBorder(lane: TimelineLaneItem["lane"]) {
   if (lane === "Media") return "border-[#F0B763]";
   if (lane === "Search") return "border-[#9B8AFB]";
   return "border-[#4D95ED]";
+}
+
+function intensitySize(intensity: TimelineLaneItem["intensity"]) {
+  if (intensity === "high") return "h-5 w-5";
+  if (intensity === "medium") return "h-4 w-4";
+  return "h-3 w-3";
+}
+
+function phaseCellBackground(phase: TimelineLaneItem["phase"]) {
+  if (phase === "Pre") return "bg-[#FBFCFF]";
+  if (phase === "During") return "bg-[#F6F9FF]";
+  return "bg-[#FCFDFF]";
+}
+
+function TimelineTouchpointCard({ item }: { item: TimelineLaneItem }) {
+  return (
+    <div className="group min-w-[150px] max-w-full flex-1 rounded-2xl border border-[#DDE6F3] bg-[#F9FBFF] px-3 py-3 shadow-[0_6px_16px_rgba(36,99,232,0.05)] transition-all duration-300 hover:-translate-y-[1px] hover:shadow-[0_12px_24px_rgba(36,99,232,0.10)]">
+      <div className="mb-2 flex items-center gap-2">
+        <div className="relative">
+          <span
+            className={`block rounded-full border-[3px] bg-white transition-transform duration-200 group-hover:scale-110 ${laneDotBorder(
+              item.lane
+            )} ${intensitySize(item.intensity)}`}
+          />
+          <div className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-30 hidden w-max max-w-[220px] -translate-x-1/2 rounded-xl border border-[#DCE6F7] bg-[#1D263B] px-3 py-2 text-left text-white shadow-xl group-hover:block">
+            <p className="text-[11px] font-semibold">{item.shortLabel}</p>
+            <p className="mt-1 text-[11px] text-white/80">{item.title}</p>
+            <p className="mt-1 text-[11px] text-white/70">{item.weekLabel}</p>
+          </div>
+        </div>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Touchpoint
+        </span>
+      </div>
+      <p className="text-[13px] leading-6 text-slate-700">{item.title}</p>
+    </div>
+  );
 }
 
 function TimelineSection({ plan }: { plan: Plan }) {
@@ -1344,7 +1551,13 @@ function TimelineSection({ plan }: { plan: Plan }) {
             {phaseMeta.map((phase) => (
               <div
                 key={phase.key}
-                className="rounded-[18px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] px-4 py-3"
+                className={`rounded-[18px] border border-[#DCE6F7] px-4 py-3 ${
+                  phase.key === "Pre"
+                    ? "bg-gradient-to-r from-[#FCFDFF] to-[#F7FAFF]"
+                    : phase.key === "During"
+                    ? "bg-gradient-to-r from-[#EEF4FF] to-[#F6F9FF]"
+                    : "bg-gradient-to-r from-[#FCFDFF] to-[#F8FBFF]"
+                }`}
               >
                 <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
                   {phase.label}
@@ -1379,49 +1592,33 @@ function TimelineSection({ plan }: { plan: Plan }) {
                     return (
                       <div
                         key={`${lane}-${phase.key}`}
-                        className="relative min-h-[108px] rounded-[18px] border border-[#E2E8F3] bg-white px-4 py-4"
+                        className={`relative min-h-[108px] rounded-[18px] border border-[#E2E8F3] px-4 py-4 ${phaseCellBackground(
+                          phase.key
+                        )}`}
                       >
                         <div className="absolute left-0 right-0 top-1/2 z-0 h-px -translate-y-1/2 bg-[#E7EDF7]" />
 
                         {phaseIndex === 1 ? (
-                          <div className="absolute left-[58%] top-3 bottom-3 z-10 w-px -translate-x-1/2 bg-[#2F73F0]/35" />
-                        ) : null}
-
-                        {phaseIndex === 1 ? (
-                          <div className="absolute left-[58%] top-2 z-20 -translate-x-1/2 rounded-full border border-[#CFE0FF] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F73F0] shadow-sm">
-                            Today
-                          </div>
+                          <>
+                            <div className="absolute left-[58%] bottom-3 top-3 z-10 w-px -translate-x-1/2 bg-[#2F73F0]/45" />
+                            <div className="absolute left-[58%] top-2 z-20 -translate-x-1/2 rounded-full border border-[#CFE0FF] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2F73F0] shadow-sm">
+                              Today
+                            </div>
+                          </>
                         ) : null}
 
                         {phaseItems.length === 0 ? (
                           <div className="relative z-10 flex h-full items-center justify-center">
                             <span
-                              className={`h-4 w-4 rounded-full border-[3px] bg-white ${laneDotBorder(
+                              className={`rounded-full border-[3px] bg-white ${laneDotBorder(
                                 lane
-                              )}`}
+                              )} h-4 w-4`}
                             />
                           </div>
                         ) : (
                           <div className="relative z-10 flex h-full flex-wrap items-start gap-3">
                             {phaseItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="min-w-[150px] max-w-full flex-1 rounded-2xl border border-[#DDE6F3] bg-[#F9FBFF] px-3 py-3 shadow-[0_6px_16px_rgba(36,99,232,0.05)]"
-                              >
-                                <div className="mb-2 flex items-center gap-2">
-                                  <span
-                                    className={`h-3 w-3 rounded-full border-[3px] bg-white ${laneDotBorder(
-                                      lane
-                                    )}`}
-                                  />
-                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                    Touchpoint
-                                  </span>
-                                </div>
-                                <p className="text-[13px] leading-6 text-slate-700">
-                                  {item.title}
-                                </p>
-                              </div>
+                              <TimelineTouchpointCard key={item.id} item={item} />
                             ))}
                           </div>
                         )}
@@ -1539,6 +1736,12 @@ function EfficiencyChart() {
   const maxBudget = Math.max(...efficiencyData.map((d) => d.budget));
   const maxEngagement = Math.max(...efficiencyData.map((d) => d.engagement));
 
+  const mostEfficient = useMemo(() => {
+    return [...efficiencyData]
+      .sort((a, b) => b.engagement / b.budget - a.engagement / a.budget)[0]
+      .channel;
+  }, []);
+
   return (
     <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -1551,6 +1754,16 @@ function EfficiencyChart() {
           </p>
         </div>
         <span className="text-sm text-slate-400">Current recommendation</span>
+      </div>
+
+      <div className="mb-4 rounded-2xl border border-[#DCE6F7] bg-white px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2463E8]">
+          ROC insight
+        </p>
+        <p className="mt-2 text-sm text-slate-700">
+          {mostEfficient} shows the strongest engagement efficiency in current launch
+          scenarios.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -1674,17 +1887,89 @@ function AIBasisPill({ children }: { children: React.ReactNode }) {
   );
 }
 
+function KPIStatCard({
+  label,
+  value,
+  trend,
+  positive = true,
+  benchmark,
+}: {
+  label: string;
+  value: string;
+  trend: string;
+  positive?: boolean;
+  benchmark?: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-slate-500">{label}</p>
+        <TrendPill value={trend} positive={positive} />
+      </div>
+      <p className="mt-2 text-3xl font-semibold">{value}</p>
+      {benchmark ? (
+        <div className="mt-3 inline-flex rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-3 py-1 text-xs font-semibold text-[#2463E8]">
+          {benchmark}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StrategySkeleton() {
+  return (
+    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
+      <div className="animate-pulse">
+        <div className="mb-5 flex items-center justify-between">
+          <div className="h-7 w-56 rounded-full bg-[#E9EFF8]" />
+          <div className="h-10 w-36 rounded-full bg-[#E9EFF8]" />
+        </div>
+
+        <div className="rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
+          <div className="grid gap-5 xl:grid-cols-[1.5fr_220px]">
+            <div>
+              <div className="h-4 w-36 rounded-full bg-[#E9EFF8]" />
+              <div className="mt-3 h-8 w-80 rounded-full bg-[#E9EFF8]" />
+              <div className="mt-4 h-4 w-full rounded-full bg-[#E9EFF8]" />
+              <div className="mt-3 h-4 w-[92%] rounded-full bg-[#E9EFF8]" />
+              <div className="mt-3 h-4 w-[86%] rounded-full bg-[#E9EFF8]" />
+            </div>
+            <div className="grid gap-3">
+              <div className="h-24 rounded-2xl bg-white" />
+              <div className="h-24 rounded-2xl bg-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-24 rounded-[18px] bg-[#F6F9FF]" />
+          ))}
+        </div>
+
+        <div className="mt-6 h-[260px] rounded-[20px] bg-[#F6F9FF]" />
+        <div className="mt-6 h-[180px] rounded-[20px] bg-[#F6F9FF]" />
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState(
     "I'm launching Product X in Germany with 500k CHF budget and want strong HCP engagement."
   );
   const [plan, setPlan] = useState<Plan>(recommendedPlan);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [error, setError] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [showExecuteModal, setShowExecuteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("planner");
   const [activeScenario, setActiveScenario] = useState<ScenarioKey>("recommended");
+  const [savedScenario, setSavedScenario] = useState(false);
+  const [planVersion, setPlanVersion] = useState("v1.2");
+  const [showWhyThisPlan, setShowWhyThisPlan] = useState(false);
+  const [executionFilter, setExecutionFilter] = useState<ExecutionFilter>("all");
 
   const serviceCount = useMemo(
     () => plan.services.filter((service) => service.enabled).length,
@@ -1700,21 +1985,93 @@ export default function Home() {
     };
   }, []);
 
+  const filteredTrackerItems = useMemo(() => {
+    if (executionFilter === "all") return trackerItems;
+    return trackerItems.filter((item) => item.status === executionFilter);
+  }, [executionFilter]);
+
   const totalBudget = useMemo(
     () => plan.budgetAllocation.reduce((sum, item) => sum + item.amount, 0),
     [plan.budgetAllocation]
   );
 
+  const decisionTags = useMemo(() => getDecisionTags(plan), [plan]);
+  const contextAwarenessText = useMemo(() => getContextAwarenessText(prompt), [prompt]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as {
+        unlocked?: boolean;
+        prompt?: string;
+        plan?: Plan;
+        activeTab?: TabKey;
+        activeScenario?: ScenarioKey;
+        planVersion?: string;
+      };
+
+      if (parsed.unlocked) setUnlocked(true);
+      if (parsed.prompt) setPrompt(parsed.prompt);
+      if (parsed.plan) setPlan(parsed.plan);
+      if (parsed.activeTab) setActiveTab(parsed.activeTab);
+      if (parsed.activeScenario) setActiveScenario(parsed.activeScenario);
+      if (parsed.planVersion) setPlanVersion(parsed.planVersion);
+    } catch {
+      // no-op for demo persistence
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          unlocked,
+          prompt,
+          plan,
+          activeTab,
+          activeScenario,
+          planVersion,
+        })
+      );
+    } catch {
+      // no-op for demo persistence
+    }
+  }, [unlocked, prompt, plan, activeTab, activeScenario, planVersion]);
+
   function applyScenario(scenario: ScenarioKey) {
     setActiveScenario(scenario);
-    if (scenario === "recommended") setPlan(recommendedPlan);
-    if (scenario === "balanced") setPlan(balancedPlan);
-    if (scenario === "efficiency") setPlan(efficiencyPlan);
+    setSavedScenario(false);
+
+    if (scenario === "recommended") {
+      setPlan(recommendedPlan);
+      setPlanVersion("v1.2");
+    }
+    if (scenario === "balanced") {
+      setPlan(balancedPlan);
+      setPlanVersion("v1.3");
+    }
+    if (scenario === "efficiency") {
+      setPlan(efficiencyPlan);
+      setPlanVersion("v1.4");
+    }
+  }
+
+  function appendRefinement(text: string) {
+    setPrompt((prev) => `${prev.trim().replace(/[. ]*$/, "")}. ${text}`);
+  }
+
+  function saveScenario() {
+    setSavedScenario(true);
+    setTimeout(() => setSavedScenario(false), 1800);
   }
 
   async function handleGeneratePlan() {
     setLoading(true);
     setError("");
+    setLoadingMessage("Interpreting market, audience, and objective...");
 
     try {
       const response = await fetch("/api/generate-plan", {
@@ -1732,6 +2089,10 @@ export default function Home() {
       const data = (await response.json()) as Plan;
       setPlan(data);
       setActiveScenario(getScenarioFromPlan(data));
+      setPlanVersion((prev) => {
+        const currentMinor = Number(prev.split(".")[1] ?? "2");
+        return `v1.${currentMinor + 1}`;
+      });
     } catch (err) {
       console.error(err);
       setError(
@@ -1739,6 +2100,7 @@ export default function Home() {
       );
     } finally {
       setLoading(false);
+      setLoadingMessage("");
     }
   }
 
@@ -1807,10 +2169,35 @@ export default function Home() {
                   ))}
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-4">
-                  <p className="text-[12px] text-slate-400">
-                    ROC will automatically interpret your input and generate a full activation plan
+                <div className="mt-4 rounded-2xl border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    Try refining your request
                   </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {promptRefinementSuggestions.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => appendRefinement(item)}
+                        className="rounded-full border border-[#DCE6F7] bg-white px-3 py-2 text-xs text-slate-600 transition hover:border-[#CFE0FF] hover:text-[#2463E8]"
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[12px] text-slate-400">
+                      ROC will automatically interpret your input and generate a full activation plan
+                    </p>
+                    {loading ? (
+                      <p className="mt-2 text-[12px] font-medium text-[#2463E8]">
+                        {loadingMessage}
+                      </p>
+                    ) : null}
+                  </div>
 
                   <button
                     onClick={handleGeneratePlan}
@@ -1864,165 +2251,215 @@ export default function Home() {
               {activeTab === "planner" && (
                 <>
                   <div className="mt-6 grid gap-6 xl:grid-cols-[1.55fr_0.75fr]">
-                    <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
-                      <div className="mb-5 flex items-center justify-between">
-                        <h3 className="text-[22px] font-semibold">
-                          Strategy Recommendation
-                        </h3>
-                        <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
-                          AI Recommended ✓
-                        </div>
-                      </div>
-
-                      <div className="mb-6 rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
-                        <div className="grid gap-5 xl:grid-cols-[1.5fr_220px] xl:items-start">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
-                              Recommended path
-                            </p>
-                            <h4 className="mt-2 text-[24px] font-semibold text-[#1D263B]">
-                              {plan.packageName}
-                            </h4>
-                            <p className="mt-3 max-w-[720px] text-[15px] leading-8 text-slate-600">
-                              {plan.budgetAdvice}
-                            </p>
-                          </div>
-
-                          <div className="grid gap-3 self-start">
-                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                                Confidence
-                              </p>
-                              <p className="mt-2 text-[18px] font-semibold text-[#2463E8]">
-                                {plan.confidence}
-                              </p>
-                            </div>
-                            <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
-                              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                                Maturity
-                              </p>
-                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                                {plan.maturity}
-                              </p>
+                    <div className="transition-all duration-300">
+                      {loading ? (
+                        <StrategySkeleton />
+                      ) : (
+                        <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm transition-all duration-300">
+                          <div className="mb-5 flex items-center justify-between">
+                            <h3 className="text-[22px] font-semibold">
+                              Strategy Recommendation
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <div className="rounded-full border border-[#D6E3FF] bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+                                {planVersion}
+                              </div>
+                              <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-4 py-2 text-sm font-medium text-[#2F73F0]">
+                                AI Recommended ✓
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div>
-                        <p className="text-[16px] leading-8 text-slate-600">
-                          {plan.packageDescription}
-                        </p>
+                          <div className="mb-6 rounded-[22px] border border-[#DCE6F7] bg-gradient-to-r from-[#F7FAFF] to-[#EEF4FF] p-5">
+                            <div className="grid gap-5 xl:grid-cols-[1.5fr_220px] xl:items-start">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2463E8]">
+                                    Recommended path
+                                  </p>
+                                  {decisionTags.map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="rounded-full border border-[#D6E3FF] bg-white px-3 py-1 text-[11px] font-semibold text-[#2463E8]"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
 
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          <HighlightPill>
-                            <span className="text-slate-500">Services:</span>{" "}
-                            <span className="font-semibold">{serviceCount}</span>
-                          </HighlightPill>
-                          <HighlightPill>
-                            <span className="text-slate-500">Budget:</span>{" "}
-                            <span className="font-semibold">
-                              {formatCurrencyCompact(totalBudget)} CHF
-                            </span>
-                          </HighlightPill>
-                          <HighlightPill>
-                            <span className="text-slate-500">Reach:</span>{" "}
-                            <span className="font-semibold">{plan.projectedReach}</span>
-                          </HighlightPill>
-                        </div>
-                      </div>
+                                <h4 className="mt-2 text-[24px] font-semibold text-[#1D263B]">
+                                  {plan.packageName}
+                                </h4>
 
-                      <div className="mt-6 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                          <p className="text-sm text-slate-500">Projected reach</p>
-                          <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                            {plan.projectedReach}
-                          </p>
-                        </div>
+                                <p className="mt-3 text-[13px] font-medium text-[#2463E8]">
+                                  {contextAwarenessText}
+                                </p>
 
-                        <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                          <p className="text-sm text-slate-500">Expected engagement</p>
-                          <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                            {plan.projectedEngagement}
-                          </p>
-                        </div>
+                                <p className="mt-3 max-w-[720px] text-[15px] leading-8 text-slate-600">
+                                  {plan.budgetAdvice}
+                                </p>
 
-                        <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
-                          <p className="text-sm text-slate-500">Estimated ROI</p>
-                          <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
-                            {plan.projectedRoi}
-                          </p>
-                        </div>
-                      </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowWhyThisPlan((prev) => !prev)}
+                                    className="rounded-full border border-[#D6E3FF] bg-white px-3 py-2 text-xs font-semibold text-[#2463E8] transition hover:border-[#BFD5FF]"
+                                  >
+                                    {showWhyThisPlan ? "Hide plan logic" : "Why this plan?"}
+                                  </button>
+                                  <div className="rounded-full border border-[#E2E8F3] bg-white px-3 py-2 text-xs text-slate-600">
+                                    You may also consider a leaner mix focused on Search + Email.
+                                  </div>
+                                </div>
 
-                      <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                        <div className="flex items-center justify-between gap-4">
-                          <h5 className="text-[18px] font-semibold">Budget Allocation</h5>
-                          <span className="text-sm text-slate-400">
-                            {formatCurrencyCompact(totalBudget)} CHF
-                          </span>
-                        </div>
+                                {showWhyThisPlan ? (
+                                  <div className="mt-4 rounded-2xl border border-[#DCE6F7] bg-white px-4 py-4 text-sm leading-7 text-slate-600">
+                                    ROC prioritized this path because the request signals a strong
+                                    launch objective, broad HCP engagement ambition, and budget
+                                    headroom for cross-channel orchestration. The recommendation
+                                    balances awareness burst, journey continuity, and post-launch
+                                    follow-through.
+                                  </div>
+                                ) : null}
+                              </div>
 
-                        <div className="mt-6">
-                          <BudgetDonut items={plan.budgetAllocation} />
-                        </div>
-                      </div>
-
-                      <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <h5 className="max-w-[320px] text-[18px] font-semibold leading-7">
-                            Recommended Channel Mix
-                          </h5>
-                          <span className="shrink-0 text-sm text-slate-400">
-                            {plan.channelMix.length} elements
-                          </span>
-                        </div>
-
-                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                          {plan.channelMix.map((item) => (
-                            <div
-                              key={item}
-                              className="flex min-h-[96px] items-start rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4 text-[14px] leading-7 text-slate-700"
-                            >
-                              {item}
+                              <div className="grid gap-3 self-start">
+                                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                                    Confidence
+                                  </p>
+                                  <p className="mt-2 text-[18px] font-semibold text-[#2463E8]">
+                                    {plan.confidence}
+                                  </p>
+                                </div>
+                                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                                    Maturity
+                                  </p>
+                                  <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                                    {plan.maturity}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
 
-                      <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                        <div className="grid gap-5 xl:grid-cols-[0.34fr_0.66fr] xl:items-start">
                           <div>
-                            <h5 className="text-[18px] font-semibold">AI rationale</h5>
-                            <p className="mt-2 text-sm text-slate-400">
-                              Evidence-based logic
+                            <p className="text-[16px] leading-8 text-slate-600">
+                              {plan.packageDescription}
                             </p>
-                          </div>
 
-                          <div className="flex flex-wrap gap-3">
-                            <AIBasisPill>Germany launch fit</AIBasisPill>
-                            <AIBasisPill>High HCP engagement potential</AIBasisPill>
-                            <AIBasisPill>Strong continuity across journey</AIBasisPill>
-                            <AIBasisPill>Balanced awareness + follow-through</AIBasisPill>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                          {[
-                            "Germany launch campaigns perform best with strong paid media bursts",
-                            "EMMA multi-touch journeys increase HCP engagement",
-                            "WhatsApp outbound improves congress attendance and continuity",
-                            "Search visibility drives discoverability and evidence traffic",
-                          ].map((item) => (
-                            <div
-                              key={item}
-                              className="rounded-2xl border border-[#E2E8F3] bg-white px-5 py-4 text-[15px] leading-8 text-slate-600"
-                            >
-                              {item}
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <HighlightPill>
+                                <span className="text-slate-500">Services:</span>{" "}
+                                <span className="font-semibold">{serviceCount}</span>
+                              </HighlightPill>
+                              <HighlightPill>
+                                <span className="text-slate-500">Budget:</span>{" "}
+                                <span className="font-semibold">
+                                  {formatCurrencyCompact(totalBudget)} CHF
+                                </span>
+                              </HighlightPill>
+                              <HighlightPill>
+                                <span className="text-slate-500">Reach:</span>{" "}
+                                <span className="font-semibold">{plan.projectedReach}</span>
+                              </HighlightPill>
                             </div>
-                          ))}
+                          </div>
+
+                          <div className="mt-6 grid gap-3 md:grid-cols-3">
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Projected reach</p>
+                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                                {plan.projectedReach}
+                              </p>
+                            </div>
+
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Expected engagement</p>
+                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                                {plan.projectedEngagement}
+                              </p>
+                            </div>
+
+                            <div className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4">
+                              <p className="text-sm text-slate-500">Estimated ROI</p>
+                              <p className="mt-2 text-[18px] font-semibold text-[#1D263B]">
+                                {plan.projectedRoi}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                            <div className="flex items-center justify-between gap-4">
+                              <h5 className="text-[18px] font-semibold">Budget Allocation</h5>
+                              <span className="text-sm text-slate-400">
+                                {formatCurrencyCompact(totalBudget)} CHF
+                              </span>
+                            </div>
+
+                            <div className="mt-6">
+                              <BudgetDonut items={plan.budgetAllocation} />
+                            </div>
+                          </div>
+
+                          <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <h5 className="max-w-[320px] text-[18px] font-semibold leading-7">
+                                Recommended Channel Mix
+                              </h5>
+                              <span className="shrink-0 text-sm text-slate-400">
+                                {plan.channelMix.length} elements
+                              </span>
+                            </div>
+
+                            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                              {plan.channelMix.map((item) => (
+                                <div
+                                  key={item}
+                                  className="flex min-h-[96px] items-start rounded-2xl border border-[#E2E8F3] bg-white px-4 py-4 text-[14px] leading-7 text-slate-700 transition hover:-translate-y-[1px] hover:shadow-sm"
+                                >
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="mt-6 rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
+                            <div className="grid gap-5 xl:grid-cols-[0.34fr_0.66fr] xl:items-start">
+                              <div>
+                                <h5 className="text-[18px] font-semibold">AI rationale</h5>
+                                <p className="mt-2 text-sm text-slate-400">
+                                  Evidence-based logic
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap gap-3">
+                                <AIBasisPill>Germany launch fit</AIBasisPill>
+                                <AIBasisPill>High HCP engagement potential</AIBasisPill>
+                                <AIBasisPill>Strong continuity across journey</AIBasisPill>
+                                <AIBasisPill>Balanced awareness + follow-through</AIBasisPill>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                              {[
+                                "Germany launch campaigns perform best with strong paid media bursts",
+                                "EMMA multi-touch journeys increase HCP engagement",
+                                "WhatsApp outbound improves congress attendance and continuity",
+                                "Search visibility drives discoverability and evidence traffic",
+                              ].map((item) => (
+                                <div
+                                  key={item}
+                                  className="rounded-2xl border border-[#E2E8F3] bg-white px-5 py-4 text-[15px] leading-8 text-slate-600"
+                                >
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <div className="space-y-5">
@@ -2035,6 +2472,10 @@ export default function Home() {
                         onApply={(updatedPlan) => {
                           setPlan(updatedPlan);
                           setActiveScenario(getScenarioFromPlan(updatedPlan));
+                          setPlanVersion((prev) => {
+                            const currentMinor = Number(prev.split(".")[1] ?? "2");
+                            return `v1.${currentMinor + 1}`;
+                          });
                         }}
                       />
 
@@ -2048,12 +2489,27 @@ export default function Home() {
                           Enabled services: {serviceCount}
                         </div>
 
-                        <button
-                          onClick={() => setShowExecuteModal(true)}
-                          className="mt-2 w-full rounded-[18px] bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-4 text-[18px] font-semibold text-white shadow-[0_16px_28px_rgba(36,99,232,0.22)]"
-                        >
-                          Execute This Plan
-                        </button>
+                        <div className="grid gap-3">
+                          <button
+                            onClick={saveScenario}
+                            className="w-full rounded-[18px] border border-[#D6E3FF] bg-white px-6 py-3 text-[15px] font-semibold text-[#2463E8] transition hover:bg-[#F7FAFF]"
+                          >
+                            Save Scenario
+                          </button>
+
+                          {savedScenario ? (
+                            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                              Scenario saved successfully.
+                            </div>
+                          ) : null}
+
+                          <button
+                            onClick={() => setShowExecuteModal(true)}
+                            className="mt-2 w-full rounded-[18px] bg-gradient-to-r from-[#2F73F0] to-[#2463E8] px-6 py-4 text-[18px] font-semibold text-white shadow-[0_16px_28px_rgba(36,99,232,0.22)]"
+                          >
+                            Execute This Plan
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2074,7 +2530,7 @@ export default function Home() {
                           <a
                             key={service.name}
                             href={service.href}
-                            className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4 text-[15px] text-slate-700 transition hover:border-[#CFE0FF] hover:shadow-sm"
+                            className="rounded-[18px] border border-[#E2E8F3] bg-[#FBFCFF] px-4 py-4 text-[15px] text-slate-700 transition hover:-translate-y-[1px] hover:border-[#CFE0FF] hover:shadow-sm"
                           >
                             <div className="flex items-center">
                               <span className="font-medium">{service.name}</span>
@@ -2136,7 +2592,7 @@ export default function Home() {
                   </div>
 
                   <div className="rounded-[24px] border border-[#E1E7F2] bg-white p-6 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between">
+                    <div className="mb-5 flex items-center justify-between gap-4">
                       <div>
                         <h3 className="text-[24px] font-semibold">Execution Tracker</h3>
                         <p className="mt-1 text-sm text-slate-500">
@@ -2148,19 +2604,39 @@ export default function Home() {
                       </div>
                     </div>
 
+                    <div className="mb-5 flex flex-wrap gap-2">
+                      {(["all", "In Production", "Ready", "In Review", "Submitted"] as ExecutionFilter[]).map(
+                        (filter) => (
+                          <button
+                            key={filter}
+                            type="button"
+                            onClick={() => setExecutionFilter(filter)}
+                            className={`rounded-full border px-3 py-2 text-sm transition ${
+                              executionFilter === filter
+                                ? "border-[#D6E3FF] bg-[#EDF4FF] font-semibold text-[#2463E8]"
+                                : "border-[#E2E8F3] bg-white text-slate-600 hover:border-[#CFE0FF]"
+                            }`}
+                          >
+                            {filter === "all" ? "All" : filter}
+                          </button>
+                        )
+                      )}
+                    </div>
+
                     <div className="overflow-hidden rounded-[20px] border border-[#E2E8F3]">
-                      <div className="grid grid-cols-[2fr_1.3fr_1fr_1fr_2fr] bg-[#F8FAFE] px-5 py-4 text-sm font-semibold text-slate-600">
+                      <div className="grid grid-cols-[2fr_1.3fr_1fr_1fr_0.8fr_2fr] bg-[#F8FAFE] px-5 py-4 text-sm font-semibold text-slate-600">
                         <div>Request</div>
                         <div>Owner</div>
                         <div>Status</div>
                         <div>Due Date</div>
+                        <div>Aging</div>
                         <div>Last Update</div>
                       </div>
 
-                      {trackerItems.map((item, idx) => (
+                      {filteredTrackerItems.map((item, idx) => (
                         <div
                           key={`${item.request}-${idx}`}
-                          className="grid grid-cols-[2fr_1.3fr_1fr_1fr_2fr] items-start border-t border-[#E2E8F3] bg-white px-5 py-5 text-sm"
+                          className="grid grid-cols-[2fr_1.3fr_1fr_1fr_0.8fr_2fr] items-start border-t border-[#E2E8F3] bg-white px-5 py-5 text-sm"
                         >
                           <div className="pr-4 font-medium text-[#1D263B]">{item.request}</div>
                           <div className="pr-4 text-slate-600">{item.owner}</div>
@@ -2168,9 +2644,20 @@ export default function Home() {
                             <StatusPill status={item.status} />
                           </div>
                           <div className="pr-4 text-slate-600">{item.dueDate}</div>
+                          <div className="pr-4">
+                            <span className="inline-flex rounded-full border border-[#E2E8F3] bg-[#FBFCFF] px-3 py-1 text-xs font-semibold text-slate-600">
+                              {item.openDays}d open
+                            </span>
+                          </div>
                           <div className="text-slate-500">{item.lastUpdate}</div>
                         </div>
                       ))}
+
+                      {!filteredTrackerItems.length ? (
+                        <div className="border-t border-[#E2E8F3] bg-white px-5 py-8 text-center text-sm text-slate-500">
+                          No requests match the selected filter.
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -2179,22 +2666,31 @@ export default function Home() {
               {activeTab === "performance" && (
                 <div className="mt-6 space-y-6">
                   <div className="grid gap-4 md:grid-cols-4">
-                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                      <p className="text-sm text-slate-500">Campaigns launched</p>
-                      <p className="mt-2 text-3xl font-semibold">28</p>
-                    </div>
-                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                      <p className="text-sm text-slate-500">Total reach</p>
-                      <p className="mt-2 text-3xl font-semibold">1.8M</p>
-                    </div>
-                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                      <p className="text-sm text-slate-500">Avg engagement</p>
-                      <p className="mt-2 text-3xl font-semibold">21%</p>
-                    </div>
-                    <div className="rounded-[22px] border border-[#E1E7F2] bg-white p-5 shadow-sm">
-                      <p className="text-sm text-slate-500">Active markets</p>
-                      <p className="mt-2 text-3xl font-semibold">14</p>
-                    </div>
+                    <KPIStatCard
+                      label="Campaigns launched"
+                      value="28"
+                      trend="+12%"
+                      positive
+                      benchmark="Top quartile performance"
+                    />
+                    <KPIStatCard
+                      label="Total reach"
+                      value="1.8M"
+                      trend="+9%"
+                      positive
+                    />
+                    <KPIStatCard
+                      label="Avg engagement"
+                      value="21%"
+                      trend="+4%"
+                      positive
+                    />
+                    <KPIStatCard
+                      label="Active markets"
+                      value="14"
+                      trend="-2%"
+                      positive={false}
+                    />
                   </div>
 
                   <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
@@ -2218,7 +2714,10 @@ export default function Home() {
 
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <p className="text-sm text-slate-500">Top-performing campaign</p>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm text-slate-500">Top-performing campaign</p>
+                            <TrendPill value="+12%" positive />
+                          </div>
                           <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
                             Germany HCP Launch Sprint
                           </p>
@@ -2228,7 +2727,12 @@ export default function Home() {
                         </div>
 
                         <div className="rounded-[20px] border border-[#E2E8F3] bg-[#FBFCFF] p-5">
-                          <p className="text-sm text-slate-500">Best-performing channel mix</p>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm text-slate-500">Best-performing channel mix</p>
+                            <div className="rounded-full border border-[#D6E3FF] bg-[#EDF4FF] px-3 py-1 text-xs font-semibold text-[#2463E8]">
+                              Benchmark leader
+                            </div>
+                          </div>
                           <p className="mt-2 text-[20px] font-semibold text-[#1D263B]">
                             Paid Media + EMMA + Web
                           </p>
