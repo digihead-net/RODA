@@ -44,8 +44,10 @@ type TimelineLaneItem = {
   shortLabel: string;
 };
 
+const DEMO_USERNAME = "roc";
 const DEMO_PASSWORD = "rode2026";
-const STORAGE_KEY = "roc-demo-state-v2";
+const STORAGE_KEY = "roc-demo-state-v3";
+const AUTH_STORAGE_KEY = "roc-auth-state";
 
 const recommendedPlan: Plan = {
   title: "Welcome, Rachel",
@@ -444,16 +446,25 @@ function RocheLogo() {
 }
 
 function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (savedAuth === "true") {
+      onUnlock();
+    }
+  }, [onUnlock]);
+
   function handleSubmit() {
-    if (password === DEMO_PASSWORD) {
+    if (username === DEMO_USERNAME && password === DEMO_PASSWORD) {
       setError("");
+      localStorage.setItem(AUTH_STORAGE_KEY, "true");
       onUnlock();
       return;
     }
-    setError("Incorrect password.");
+    setError("Incorrect username or password.");
   }
 
   return (
@@ -469,15 +480,26 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
 
         <h1 className="text-3xl font-semibold text-[#1D263B]">Protected Demo</h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Enter password to access the operating system demo.
+          Enter credentials to access the ROC demo environment.
         </p>
+
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Username"
+          className="mt-6 w-full rounded-2xl border border-[#D9E1EF] px-4 py-3 outline-none focus:border-[#2463E8]"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSubmit();
+          }}
+        />
 
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter password"
-          className="mt-6 w-full rounded-2xl border border-[#D9E1EF] px-4 py-3 outline-none focus:border-[#2463E8]"
+          placeholder="Password"
+          className="mt-4 w-full rounded-2xl border border-[#D9E1EF] px-4 py-3 outline-none focus:border-[#2463E8]"
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSubmit();
           }}
@@ -1388,7 +1410,7 @@ function getWeekLabel(phase: TimelineLaneItem["phase"], index: number) {
 
 function buildShortLabel(
   lane: TimelineLaneItem["lane"],
-  phase: TimelineLaneItem["phase"],
+  _phase: TimelineLaneItem["phase"],
   title: string,
   count: number
 ) {
@@ -2000,6 +2022,11 @@ export default function Home() {
 
   useEffect(() => {
     try {
+      const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (savedAuth === "true") {
+        setUnlocked(true);
+      }
+
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
 
@@ -2019,7 +2046,7 @@ export default function Home() {
       if (parsed.activeScenario) setActiveScenario(parsed.activeScenario);
       if (parsed.planVersion) setPlanVersion(parsed.planVersion);
     } catch {
-      // no-op for demo persistence
+      // no-op
     }
   }, []);
 
@@ -2037,7 +2064,7 @@ export default function Home() {
         })
       );
     } catch {
-      // no-op for demo persistence
+      // no-op
     }
   }, [unlocked, prompt, plan, activeTab, activeScenario, planVersion]);
 
